@@ -66,6 +66,55 @@ eq(Saju.branchRelation(0, 6), '충', '자오충');
 eq(Saju.branchRelation(0, 1), '합', '자축합');
 eq(Saju.branchRelation(8, 4), '삼합', '신진 삼합(수국)');
 
+console.log('[절기 정밀 계산 검증]');
+// 공표된 만세력 절기일과 대조 (근사식이 틀렸던 윤년 포함)
+[[2024, 2, 4], [2025, 2, 3], [2026, 2, 4], [2000, 2, 4], [2004, 2, 4],
+ [2016, 2, 4], [2024, 4, 4], [1984, 2, 5]].forEach(([y, m, d]) => {
+  eq(Saju.termDay(y, m), d, `${y}년 ${Saju.TERM_NAME[m]} = ${m}/${d}`);
+});
+// 절기일 범위 제약: 입춘은 2/3~2/5, 청명은 4/4~4/6를 벗어나지 않음
+let ipchunRange = true, chungmyeongRange = true;
+for (let y = 1930; y <= 2030; y++) {
+  const i = Saju.termDay(y, 2), c = Saju.termDay(y, 4);
+  if (i < 3 || i > 5) ipchunRange = false;
+  if (c < 4 || c > 6) chungmyeongRange = false;
+}
+eq(ipchunRange, true, '1930~2030 입춘이 2/3~2/5 범위 내');
+eq(chungmyeongRange, true, '1930~2030 청명이 4/4~4/6 범위 내');
+// 절기는 매년 단조 증가해야 함 (계산 발산 방지)
+let monotonic = true;
+for (let y = 1931; y <= 2030; y++) {
+  for (let m = 1; m <= 12; m++) if (Saju.termJD(y, m) <= Saju.termJD(y - 1, m)) monotonic = false;
+}
+eq(monotonic, true, '절기 시각이 연도별로 단조 증가');
+
+console.log('[입춘 경계 시각 검증]');
+// 2024 입춘은 2/4 저녁 — 같은 날이라도 시각에 따라 년주가 갈림
+const beforeIp = Saju.computeSaju({ year: 2024, month: 2, day: 4, hour: 10, minute: 0, hourUnknown: false, solarCorrection: true });
+const afterIp = Saju.computeSaju({ year: 2024, month: 2, day: 4, hour: 20, minute: 0, hourUnknown: false, solarCorrection: true });
+eq(beforeIp.year.name, '계묘', '입춘 전 출생 → 전년도 년주');
+eq(afterIp.year.name, '갑진', '입춘 후 출생 → 당해 년주');
+eq(beforeIp.boundaryUncertain, false, '시각을 알면 경계 불확실 아님');
+const unknownIp = Saju.computeSaju({ year: 2024, month: 2, day: 4, hourUnknown: true, solarCorrection: true });
+eq(unknownIp.boundaryUncertain, true, '절기 당일 + 시간 모름 → 경계 불확실 표시');
+
+console.log('[한국 표준시 역사 검증]');
+eq(Saju.solarShiftMin(1995, 3, 21), 30, '현대(UTC+9) → 30분 보정');
+eq(Saju.solarShiftMin(1988, 8, 15), 90, '1988 서머타임 → 90분 보정');
+eq(Saju.solarShiftMin(1988, 1, 15), 30, '1988 겨울(서머타임 밖) → 30분');
+eq(Saju.solarShiftMin(1957, 1, 15), 0, '1957(UTC+8:30) → 보정 없음');
+eq(Saju.solarShiftMin(1955, 6, 15), 60, '1955 여름(UTC+8:30 + 서머타임) → 60분');
+eq(Saju.solarShiftMin(1953, 6, 15), 30, '1953(UTC+9, 서머타임 없음) → 30분');
+// 서머타임 1시간 차이가 시주를 실제로 바꾸는지
+const dstOn = Saju.computeSaju({ year: 1988, month: 8, day: 15, hour: 7, minute: 30, hourUnknown: false, solarCorrection: true });
+const dstOff = Saju.computeSaju({ year: 1988, month: 1, day: 15, hour: 7, minute: 30, hourUnknown: false, solarCorrection: true });
+eq(dstOn.hour.branch, 3, '1988 여름 07:30 → 90분 보정 → 06:00 = 묘시');
+eq(dstOff.hour.branch, 4, '1988 겨울 07:30 → 30분 보정 → 07:00 = 진시');
+eq(dstOn.hour.name !== dstOff.hour.name, true, '서머타임 여부가 시주를 실제로 바꿈');
+// 1984 입춘은 2/5 00:25 — 2/4 출생자는 전년(계해)에 속함
+eq(Saju.computeSaju({ year: 1984, month: 2, day: 4, hour: 12, minute: 0, hourUnknown: false, solarCorrection: true }).year.name,
+  '계해', '1984-02-04 출생 → 계해년 (입춘 전)');
+
 console.log('[대운 검증 — 성별 반영]');
 // 1984 갑자년(양) 남자 → 순행 / 여자 → 역행
 const mSaju = Saju.computeSaju({ year: 1984, month: 5, day: 1, hourUnknown: true, gender: 'M' });
