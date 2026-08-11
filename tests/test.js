@@ -66,6 +66,49 @@ eq(Saju.branchRelation(0, 6), '충', '자오충');
 eq(Saju.branchRelation(0, 1), '합', '자축합');
 eq(Saju.branchRelation(8, 4), '삼합', '신진 삼합(수국)');
 
+console.log('[대운 검증 — 성별 반영]');
+// 1984 갑자년(양) 남자 → 순행 / 여자 → 역행
+const mSaju = Saju.computeSaju({ year: 1984, month: 5, day: 1, hourUnknown: true, gender: 'M' });
+const fSaju = Saju.computeSaju({ year: 1984, month: 5, day: 1, hourUnknown: true, gender: 'F' });
+eq(mSaju.luck.direction, '순행', '양년(갑자) 남자 → 순행');
+eq(fSaju.luck.direction, '역행', '양년(갑자) 여자 → 역행');
+// 1985 을축년(음) 남자 → 역행 / 여자 → 순행
+const m85 = Saju.computeSaju({ year: 1985, month: 5, day: 1, hourUnknown: true, gender: 'M' });
+const f85 = Saju.computeSaju({ year: 1985, month: 5, day: 1, hourUnknown: true, gender: 'F' });
+eq(m85.luck.direction, '역행', '음년(을축) 남자 → 역행');
+eq(f85.luck.direction, '순행', '음년(을축) 여자 → 순행');
+// 순행/역행은 월주 기준 서로 반대 방향
+const mIdx = Saju.ganzhiIndexOf(mSaju.month.stem, mSaju.month.branch);
+eq(mSaju.luck.list[0].index, (mIdx + 1) % 60, '순행 첫 대운 = 월주 +1');
+eq(fSaju.luck.list[0].index, (mIdx + 59) % 60, '역행 첫 대운 = 월주 -1');
+eq(mSaju.luck.list.length, 8, '대운 8주기 생성');
+eq(mSaju.luck.list[1].from - mSaju.luck.list[0].from, 10, '대운 간격 10년');
+eq(mSaju.luck.startAge >= 1 && mSaju.luck.startAge <= 10, true, '대운수 1~10 범위');
+// 성별 미선택 시 대운/배우자 해석 없음
+const xSaju = Saju.computeSaju({ year: 1984, month: 5, day: 1, hourUnknown: true, gender: 'X' });
+eq(xSaju.luck, null, '성별 미선택 → 대운 null');
+eq(xSaju.spouse, null, '성별 미선택 → 배우자성 null');
+
+console.log('[절기 경계 검증]');
+const pt = Saju.prevTermDate(2024, 6, 1);
+eq(pt.m, 5, '6/1 이전 절기는 5월(입하)');
+const nt = Saju.nextTermDate(2024, 6, 20);
+eq(nt.m, 7, '6/20 다음 절기는 7월(소서)');
+
+console.log('[배우자성 검증]');
+eq(mSaju.spouse.starName, '재성(財星)', '남자 → 재성이 배우자성');
+eq(fSaju.spouse.starName, '관성(官星)', '여자 → 관성이 배우자성');
+eq(typeof mSaju.spouse.count === 'number' && mSaju.spouse.count >= 0, true, '배우자성 개수 산출');
+
+console.log('[신살 검증]');
+eq(Array.isArray(mSaju.sinsal), true, '신살 배열 반환');
+let sinsalOk = true;
+mSaju.sinsal.forEach(n => { if (!SajuData.SINSAL_DESC[n]) sinsalOk = false; });
+eq(sinsalOk, true, '검출된 신살에 해설이 모두 존재');
+// 자(0)년생 기준 도화는 유(9) — 신자진 수국
+const sin = Saju.computeSinsal([{ branch: 9 }], 0, 0, 0);
+eq(sin.indexOf('도화') !== -1, true, '자년 + 유지 → 도화살');
+
 console.log('[운세/타로/MBTI 결정성 검증]');
 s = Saju.computeSaju({ year: 1995, month: 3, day: 21, hour: 9, minute: 0, hourUnknown: false, solarCorrection: true });
 const d1 = Fortune.dailyFortune(s, new Date(2026, 7, 11));

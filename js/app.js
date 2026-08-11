@@ -16,6 +16,14 @@
   // 일간 상징("보석과 칼날 💎")에서 이모지/이름 분리
   const symEmoji = (dm) => dm.symbol.split(' ').pop();
   const symName = (dm) => dm.symbol.split(' ').slice(0, -1).join(' ');
+  // 만 나이
+  function ageOf(p) {
+    const t = new Date();
+    let a = t.getFullYear() - p.year;
+    const bd = new Date(t.getFullYear(), p.month - 1, p.day);
+    if (t < bd) a--;
+    return a;
+  }
 
   /* ==================== 초기화 ==================== */
   function init() {
@@ -326,12 +334,67 @@
         <p class="muted" style="margin-top:6px;">${SajuData.ELEMENT_DESC[saju.lacking].lack}</p>
       </div>
 
+      ${renderLuckCard()}
+      ${renderSinsalCard()}
+
       <div id="deep-section"></div>
 
       <div class="notice-box">ℹ️ 본 서비스의 사주 계산은 절기 근사식을 사용하며, 절기 경계일(입춘 등) 전후 출생은 실제와 1일 차이가 날 수 있습니다. 해석은 재미와 자기 이해를 위한 참고 자료로 활용해 주세요.</div>
     `;
 
+    const genderBtn = $('#btn-set-gender');
+    if (genderBtn) genderBtn.addEventListener('click', openProfileEditor);
+
     renderDeepReport();
+  }
+
+  /* ---------- 대운 (성별 기반) ---------- */
+  function renderLuckCard() {
+    if (!saju.luck) {
+      return `
+        <div class="card">
+          <div class="card-title">🌊 대운 (10년 주기 운의 흐름)</div>
+          <p class="fortune-text">대운은 <b>태어난 해의 음양과 성별</b>이 맞물려 방향이 정해집니다.
+          (양남음녀는 순행, 음남양녀는 역행) 성별을 선택하지 않으셔서 계산할 수 없어요.</p>
+          <button class="btn-ghost btn-sm" id="btn-set-gender" style="margin-top:10px;">⚙️ 성별 선택하고 대운 보기</button>
+        </div>`;
+    }
+    const L = saju.luck;
+    const age = ageOf(profile);
+    return `
+      <div class="card">
+        <div class="card-title">🌊 대운 (10년 주기 운의 흐름)<span class="spacer"></span><span class="muted">${L.direction} · 대운수 ${L.startAge}</span></div>
+        <p class="fortune-text" style="margin-bottom:12px;">${SajuData.LUCK_INTRO[L.direction]}</p>
+        ${L.list.map(d => {
+          const now = age >= d.from && age <= d.to;
+          const god = Saju.tenGod(saju.dayMaster, d.stem);
+          return `
+          <div class="week-row" ${now ? 'style="background:rgba(139,111,240,0.12);border-radius:10px;padding-left:8px;padding-right:8px;"' : ''}>
+            <div class="week-day">${d.from}~${d.to}세${now ? '<small style="color:var(--gold)">지금 이 대운</small>' : ''}</div>
+            <div class="week-head"><b style="color:var(--text)">${d.hanja} ${d.name}</b> · ${god}</div>
+            <div class="week-score" style="font-size:12px;">${d.stemElem}${d.branchElem}</div>
+          </div>`;
+        }).join('')}
+        <p class="muted" style="margin-top:10px;">💡 대운은 10년마다 인생의 배경 음악이 바뀌는 것과 같아요. 지금 대운의 십신이 요즘 나에게 강하게 작동하는 에너지입니다.</p>
+      </div>`;
+  }
+
+  /* ---------- 신살 ---------- */
+  function renderSinsalCard() {
+    if (!saju.sinsal.length) return '';
+    return `
+      <div class="card">
+        <div class="card-title">✨ 내 사주의 신살(神煞)</div>
+        ${saju.sinsal.map(n => {
+          const s = SajuData.SINSAL_DESC[n];
+          return `
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:800;font-size:15px;">${s.emoji} ${s.title}</div>
+            <p class="fortune-text" style="margin-top:4px;">${s.desc}</p>
+            <div class="tarot-advice" style="margin-top:8px;">💡 ${s.tip}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
   }
 
   /* ---------- 심층 리포트 (프리미엄) ---------- */
@@ -402,11 +465,59 @@
         <div class="card-title">💕 연애·인연 풀이</div>
         <p class="fortune-text">${dm.love}</p>
         <p class="muted" style="margin-top:6px;">일지(배우자궁)에 <b>${g.day.branch}</b>의 기운이 자리해, ${SajuData.TEN_GOD_DESC[g.day.branch] ? SajuData.TEN_GOD_DESC[g.day.branch].short + '의 인연이 배우자 자리에서 작동합니다.' : '인연의 기운이 흐릅니다.'}</p>
+        ${renderSpouseBlock()}
+
+        <div class="divider"></div>
+        <div class="card-title">📆 ${new Date().getFullYear()}년 세운 · 지금의 대운</div>
+        ${renderYearlyBlock()}
 
         <div class="divider"></div>
         <div class="card-title">🧭 달빛 조언</div>
         <p class="fortune-text">${dm.caution} ${SajuData.ELEMENT_DESC[saju.lacking].lack}</p>
       </div>`;
+  }
+
+  /* ---------- 배우자성 블록 (성별 기반) ---------- */
+  function renderSpouseBlock() {
+    const sp = saju.spouse;
+    if (!sp) return `<p class="muted" style="margin-top:6px;">⚙️ 성별을 선택하시면 배우자성(남자는 재성, 여자는 관성) 해석을 함께 보여드려요.</p>`;
+    const D = SajuData.SPOUSE_DESC[saju.gender];
+    const body = sp.count >= 3 ? D.many : sp.count === 0 ? D.none : D.one;
+    return `
+      <div class="rel-comment" style="margin-top:10px;">
+        ${D.intro} 당신의 사주에는 ${D.star}이 <b>${sp.count}개</b> 있습니다.<br/><br/>${body}
+      </div>`;
+  }
+
+  /* ---------- 올해 세운 + 현재 대운 ---------- */
+  function renderYearlyBlock() {
+    const y = new Date().getFullYear();
+    // 세운: 해당 연도의 년간지
+    const stem = ((y - 4) % 10 + 10) % 10;
+    const branch = ((y - 4) % 12 + 12) % 12;
+    const god = Saju.tenGod(saju.dayMaster, stem);
+    const gd = SajuData.TEN_GOD_DESC[god];
+    const name = Saju.STEMS[stem] + Saju.BRANCHES[branch];
+    const hanja = Saju.STEM_HANJA[stem] + Saju.BRANCH_HANJA[branch];
+    const rel = Saju.branchRelation(saju.day.branch, branch);
+    const relTxt = SajuData.RELATION_COMMENT[rel];
+
+    let cur = '';
+    if (saju.luck) {
+      const age = ageOf(profile);
+      const d = saju.luck.list.find(x => age >= x.from && age <= x.to);
+      if (d) {
+        const lg = Saju.tenGod(saju.dayMaster, d.stem);
+        const lgd = SajuData.TEN_GOD_DESC[lg];
+        cur = `<p class="fortune-text" style="margin-top:10px;">지금은 <b>${d.hanja} ${d.name} 대운</b>(${d.from}~${d.to}세) 한가운데입니다. ${lgd ? lgd.short + ' — ' + lgd.desc : ''}</p>`;
+      }
+    }
+
+    return `
+      <p class="fortune-text">${y}년은 <b>${hanja} ${name}년</b>, 당신의 일간에게는 <b>${god}</b>의 해입니다.
+      ${gd ? gd.short + ' — ' + gd.desc : ''}</p>
+      ${relTxt ? `<div class="rel-comment" style="margin-top:10px;">✨ ${relTxt}</div>` : ''}
+      ${cur}`;
   }
 
   /* ==================== 타로 ==================== */
