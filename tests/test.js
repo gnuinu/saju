@@ -3,6 +3,8 @@ const Saju = require('../js/saju.js');
 global.Saju = Saju;
 const SajuData = require('../js/data.js');
 global.SajuData = SajuData;
+const Lunar = require('../js/lunar.js');
+global.Lunar = Lunar;
 const Tarot = require('../js/tarot.js');
 const Mbti = require('../js/mbti.js');
 const Fortune = require('../js/fortune.js');
@@ -114,6 +116,64 @@ eq(dstOn.hour.name !== dstOff.hour.name, true, '서머타임 여부가 시주를
 // 1984 입춘은 2/5 00:25 — 2/4 출생자는 전년(계해)에 속함
 eq(Saju.computeSaju({ year: 1984, month: 2, day: 4, hour: 12, minute: 0, hourUnknown: false, solarCorrection: true }).year.name,
   '계해', '1984-02-04 출생 → 계해년 (입춘 전)');
+
+console.log('[음력 변환 검증]');
+const ymd = (o) => o ? o.year + '-' + String(o.month).padStart(2, '0') + '-' + String(o.day).padStart(2, '0') : 'null';
+// 설날 = 음력 1월 1일
+[[2020, '2020-01-25'], [2022, '2022-02-01'], [2023, '2023-01-22'],
+ [2024, '2024-02-10'], [2025, '2025-01-29'], [2026, '2026-02-17']].forEach(([y, s]) => {
+  eq(ymd(Lunar.lunarToSolar(y, 1, false, 1)), s, `${y}년 설날(음 1/1) = ${s}`);
+});
+// 추석 = 음력 8월 15일
+[[2022, '2022-09-10'], [2023, '2023-09-29'], [2024, '2024-09-17'], [2025, '2025-10-06']].forEach(([y, s]) => {
+  eq(ymd(Lunar.lunarToSolar(y, 8, false, 15)), s, `${y}년 추석(음 8/15) = ${s}`);
+});
+// 윤달
+[[2012, 3], [2014, 9], [2017, 5], [2020, 4], [2023, 2], [2025, 6], [2028, 5]].forEach(([y, lm]) => {
+  eq(Lunar.leapMonthOf(y), lm, `${y}년 윤달 = 윤${lm}월`);
+});
+eq(Lunar.leapMonthOf(2024), 0, '2024년은 윤달 없음');
+
+// 양력↔음력 왕복 변환 (1930~2030 매월 1·15일)
+let rtFail = 0, rtTotal = 0;
+for (let y = 1930; y <= 2030; y += 1) {
+  for (let m = 1; m <= 12; m += 3) {
+    for (const d of [1, 15]) {
+      const lu = Lunar.solarToLunar(y, m, d);
+      rtTotal++;
+      if (!lu) { rtFail++; continue; }
+      const back = Lunar.lunarToSolar(lu.year, lu.month, lu.isLeap, lu.day);
+      if (!back || back.year !== y || back.month !== m || back.day !== d) rtFail++;
+    }
+  }
+}
+eq(rtFail, 0, `양력→음력→양력 왕복 일치 (${rtTotal}건)`);
+
+// 음력 달은 29일 또는 30일
+let lenOK = true;
+Lunar.monthsOfLunarYear(2024).forEach(m => { if (m.days !== 29 && m.days !== 30) lenOK = false; });
+eq(lenOK, true, '음력 달 길이는 29 또는 30일');
+// 윤달 포함 해는 13개월
+eq(Lunar.monthsOfLunarYear(2023).length, 13, '윤달 있는 해(2023)는 13개월');
+eq(Lunar.monthsOfLunarYear(2024).length, 12, '평년(2024)은 12개월');
+// 없는 날짜는 null
+eq(Lunar.lunarToSolar(2024, 1, true, 1), null, '없는 윤달 요청 → null');
+eq(Lunar.lunarToSolar(2024, 1, false, 31), null, '음력 31일 → null');
+
+console.log('[음력 입력 → 사주 일관성]');
+// 음력 설날 출생은 양력으로 환산해도 같은 날을 가리켜야 함
+const seol2024 = Lunar.lunarToSolar(2024, 1, false, 1);   // 2024-02-10
+const sajuLunar = Saju.computeSaju({ year: seol2024.year, month: seol2024.month, day: seol2024.day, hour: 9, minute: 0, hourUnknown: false, solarCorrection: true, gender: 'F' });
+const sajuSolar = Saju.computeSaju({ year: 2024, month: 2, day: 10, hour: 9, minute: 0, hourUnknown: false, solarCorrection: true, gender: 'F' });
+eq(sajuLunar.day.name, sajuSolar.day.name, '음력 2024-1-1 = 양력 2024-2-10, 일주 동일');
+eq(sajuLunar.year.name, '갑진', '2024 설날은 입춘 이후라 갑진년');
+// 윤달과 평달은 서로 다른 날짜로 환산돼야 함
+const plain = Lunar.lunarToSolar(2023, 2, false, 15);
+const leapy = Lunar.lunarToSolar(2023, 2, true, 15);
+eq(plain.month !== leapy.month || plain.day !== leapy.day, true, '2023년 평2월과 윤2월은 다른 날');
+eq(Saju.computeSaju({ year: plain.year, month: plain.month, day: plain.day, hourUnknown: true }).day.name
+  !== Saju.computeSaju({ year: leapy.year, month: leapy.month, day: leapy.day, hourUnknown: true }).day.name,
+  true, '평달/윤달 선택에 따라 사주가 달라짐');
 
 console.log('[대운 검증 — 성별 반영]');
 // 1984 갑자년(양) 남자 → 순행 / 여자 → 역행

@@ -463,7 +463,7 @@
   global.Saju = {
     STEMS, STEM_HANJA, STEM_ELEM, BRANCHES, BRANCH_HANJA, BRANCH_ELEM,
     BRANCH_ANIMAL, ELEMENTS, ELEM_COLOR, GEN_NEXT, CTRL,
-    jdn, jdFull, jdToDate, termDay, termMoment, termJD, solarLongitude,
+    jdn, jdFull, jdToDate, termDay, termMoment, termJD, solarLongitude, deltaTSec,
     koreaOffsetMin, solarShiftMin, TERM_NAME, ganzhiOf, ganzhiIndexOf, dayGanzhiIndex,
     prevTermDate, nextTermDate, computeLuckCycles, computeSinsal, spouseAnalysis,
     computeSaju, tenGod, branchRelation, hashStr, seededRng, todayGanzhi,
