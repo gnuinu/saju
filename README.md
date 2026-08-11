@@ -22,16 +22,10 @@ python3 -m http.server 8000
 `main` 브랜치에 푸시하면 `.github/workflows/deploy-pages.yml`이 자동으로
 엔진 테스트를 돌리고 GitHub Pages에 배포합니다. 테스트가 실패하면 배포되지 않습니다.
 
-### 최초 1회 필수 설정
-
-저장소 **Settings → Pages → Source**를 **GitHub Actions**로 지정해야 합니다.
-
-워크플로의 `configure-pages` 단계에 `enablement: true`가 있지만, Actions의 `GITHUB_TOKEN`으로는
-Pages 사이트를 새로 **생성**할 수 없습니다(`Resource not accessible by integration`).
-사이트가 한 번 만들어진 뒤부터는 이 단계가 기존 설정을 읽어오기만 하므로 그대로 통과합니다.
-
-설정 후에는 Actions 탭에서 `Deploy to GitHub Pages` 워크플로를 `Re-run` 하거나
-`main`에 아무 커밋이나 푸시하면 배포됩니다.
+> 이 저장소는 Pages 설정이 완료되어 있습니다. 포크해서 쓰실 경우에만 아래가 필요합니다.
+> **Settings → Pages → Source**를 **GitHub Actions**로 한 번 지정해 주세요.
+> Actions의 `GITHUB_TOKEN`으로는 Pages 사이트를 새로 *생성*할 수 없어
+> (`Resource not accessible by integration`) 최초 1회는 수동 설정이 필요합니다.
 
 ## 주요 기능
 
@@ -45,6 +39,7 @@ Pages 사이트를 새로 **생성**할 수 없습니다(`Resource not accessibl
 | MBTI × 사주 | 16유형 × 일간 결합 해석, 시너지 점수 | 무료 |
 | 용어 사전 | 화면의 한자어를 눌러 뜻풀이 확인 (40여 개) | 무료 |
 | 음력 생일 입력 | 윤달 포함. 입력 즉시 양력 환산을 보여 줌 | 무료 |
+| 영수증 공유 카드 | 오늘의 운세를 편의점 영수증 이미지로 저장·공유 | 무료 |
 
 ## 과금 구조 (엽전 시스템)
 
@@ -75,6 +70,7 @@ js/fortune.js     일별/주간 운세 생성 (결정적 시드 → 같은 날 �
 js/tarot.js       메이저 아르카나 22장 + 뽑기
 js/mbti.js        MBTI 16유형 × 사주 결합 해석
 js/store.js       엽전·출석 도장·광고·결제 스캐폴딩 (localStorage)
+js/receipt.js     영수증 공유 카드 (Canvas 렌더링 + 저장/공유)
 js/app.js         UI 로직
 tests/test.js     엔진 검증 테스트 (node tests/test.js)
 ```
@@ -111,8 +107,8 @@ tests/test.js     엔진 검증 테스트 (node tests/test.js)
 - [x] 대운·세운 (10년 주기 운세) — 성별 기반 순행/역행
 - [x] 신살 (도화·역마·화개·천을귀인)
 - [x] 음력 생일 입력 (윤달 포함)
+- [x] 결과 공유 카드 (편의점 영수증 스타일 이미지)
 - [ ] 궁합 보기 (두 사람 사주 비교) — 유료 콘텐츠 1순위
-- [ ] 결과 공유 카드 (편의점 영수증 스타일 이미지)
 - [ ] 12운성 · 공망
 - [ ] 균시차(진태양시) 옵션
 - [ ] 리워드 광고 SDK 연동
@@ -122,7 +118,7 @@ tests/test.js     엔진 검증 테스트 (node tests/test.js)
 ## 테스트
 
 ```bash
-node tests/test.js   # 절기 정밀도·음력 변환·대운·신살·표준시 등 107개 검증
+node tests/test.js   # 절기 정밀도·음력 변환·대운·신살·표준시 등 111개 검증
 ```
 
 > ⚠️ 본 앱의 운세·해석은 재미와 자기 이해를 위한 참고 자료입니다.

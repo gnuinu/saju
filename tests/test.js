@@ -235,6 +235,16 @@ eq(m1.score, m2.score, 'MBTI 궁합 점수 결정적');
 eq(typeof m1.synergy, 'string', '결합 해석 문자열 생성');
 
 // 모든 일간에 해석 콘텐츠 존재
+console.log('[영수증 카드]');
+const Receipt = require('../js/receipt.js');
+eq(Receipt.fileName({ fortune: { date: new Date(2026, 7, 11) } }), '운세편의점_영수증_20260811.png', '영수증 파일명 생성');
+eq(Receipt.fileName({ fortune: { date: new Date(2026, 0, 5) } }), '운세편의점_영수증_20260105.png', '한 자리 월/일도 0으로 채움');
+// 줄바꿈: 폭을 넘지 않게 쪼개고 글자를 잃지 않아야 함
+const fakeCtx = { measureText: (s) => ({ width: s.length * 10 }) };
+const wrapped = Receipt.wrapText(fakeCtx, '가나다라마바사아자차카타파하', 50);
+eq(wrapped.every(l => l.length <= 5), true, '줄바꿈이 최대 폭을 넘지 않음');
+eq(wrapped.join(''), '가나다라마바사아자차카타파하', '줄바꿈 후에도 글자 보존');
+
 console.log('[콘텐츠 무결성]');
 let ok = true;
 Saju.STEMS.forEach(st => { if (!SajuData.DAY_MASTER[st]) ok = false; });

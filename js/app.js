@@ -259,11 +259,19 @@
 
       <div id="weekly-section"></div>
 
+      <div class="card">
+        <div class="card-title">🧾 오늘의 영수증<span class="spacer"></span><span class="muted">무료</span></div>
+        <p class="muted" style="margin-bottom:10px;">오늘의 운세를 편의점 영수증으로 뽑아 드려요. 저장하거나 친구에게 공유해 보세요.</p>
+        <button class="btn-gold" id="btn-receipt">🧾 영수증 뽑기</button>
+      </div>
+
       <div class="card" id="attend-card">
         <div class="card-title">🔖 출석 도장<span class="spacer"></span><span class="muted">매일 +${Store.REWARDS.attendance}냥</span></div>
         <button class="btn-gold" id="btn-attend">${Store.canAttend(todayKey()) ? '오늘 도장 찍고 엽전 받기 🪙' : '오늘 도장 완료! 내일 또 오세요 ✅'}</button>
       </div>
     `;
+
+    $('#btn-receipt').addEventListener('click', () => openReceipt(f));
 
     $('#btn-attend').addEventListener('click', () => {
       if (Store.attend(todayKey())) {
@@ -276,6 +284,43 @@
     });
 
     renderWeekly();
+  }
+
+  /* ---------- 영수증 공유 카드 ---------- */
+  function openReceipt(fortune) {
+    // 오늘 뽑은 타로가 있으면 영수증에 함께 인쇄
+    const draws = Store.tarotDrawsToday(todayKey());
+    const tarot = draws > 0 ? drawTarotCard(draws) : null;
+    const lun = profile.lunarInput;
+
+    const canvas = Receipt.render({
+      profile, saju, fortune, tarot,
+      lunar: lun ? `음 ${lun.year}.${lun.isLeap ? '윤' : ''}${lun.month}.${lun.day} (양 ${profile.year}.${profile.month}.${profile.day})` : null,
+      seed: todayKey() + '-' + profileSig(profile),
+    });
+
+    const modal = $('#modal');
+    $('#modal-content').innerHTML = `
+      <div class="modal-title">🧾 오늘의 영수증</div>
+      <div class="receipt-wrap" id="receipt-wrap"></div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn-gold" id="btn-receipt-share">${Receipt.canShareFiles() ? '📤 공유하기' : '💾 이미지 저장'}</button>
+        <button class="btn-ghost" id="btn-receipt-close">닫기</button>
+      </div>`;
+    canvas.style.width = '100%';
+    canvas.style.display = 'block';
+    $('#receipt-wrap').appendChild(canvas);
+    modal.classList.remove('hidden');
+    modal.onclick = (e) => { if (e.target === modal) closeModal(); };
+
+    const name = Receipt.fileName({ fortune });
+    $('#btn-receipt-share').addEventListener('click', () => {
+      Receipt.share(canvas, name).then(r => {
+        if (r === 'downloaded') toast('💾 영수증을 저장했어요');
+        else if (r === 'shared') toast('📤 공유했어요!');
+      }).catch(() => toast('저장에 실패했어요 🥲'));
+    });
+    $('#btn-receipt-close').addEventListener('click', closeModal);
   }
 
   /* ---------- 주간 운세 (유료 상품) ---------- */
