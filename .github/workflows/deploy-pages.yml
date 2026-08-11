@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # GITHUB_TOKEN에 Pages 배포 권한 부여
@@ -31,6 +33,8 @@ jobs:
   deploy:
     name: Pages 배포
     needs: test
+    # PR에서는 테스트만 돌리고 배포는 main에 반영된 뒤에만 수행
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
