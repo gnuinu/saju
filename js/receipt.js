@@ -32,22 +32,52 @@
     return lines;
   }
 
-  /* ---------- 영수증 구성 ----------
+  const SITE = 'gnuinu.github.io/saju';
+
+  function dateLabel(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`;
+  }
+
+  /* 영수증 번호 — 시드에서 뽑아 같은 조합이면 항상 같은 번호 */
+  function receiptNo(seed) {
+    const h = global.Saju.hashStr(seed).toString(16).toUpperCase().padStart(8, '0');
+    return `No. ${h.slice(0, 4)}-${h.slice(4, 6)}`;
+  }
+
+  /* 머리말 — 두 종류 영수증이 공유합니다 */
+  function pushHeader(push, subtitle) {
+    push({ t: 'gap', h: 26 });
+    push({ t: 'center', text: '🏪 운세 편의점', font: f(23, 800), h: 30 });
+    push({ t: 'center', text: '24시간 열려 있는 나의 운세 가게', font: f(11), color: FAINT, h: 18 });
+    if (subtitle) push({ t: 'center', text: subtitle, font: f(13, 800), h: 24 });
+    push({ t: 'gap', h: 8 });
+    push({ t: 'sep', style: 'double', h: 12 });
+  }
+
+  /* 맺음말 — 바코드와 함께 앱 주소를 남겨 공유받은 분도 찾아올 수 있게 합니다 */
+  function pushFooter(push, seed, codeText, cta) {
+    push({ t: 'gap', h: 10 });
+    push({ t: 'barcode', h: 52 });
+    push({ t: 'center', text: codeText, font: f(10, 400, true), color: FAINT, h: 18 });
+    push({ t: 'gap', h: 8 });
+    push({ t: 'center', text: cta, font: f(12, 700), h: 22 });
+    push({ t: 'center', text: SITE, font: f(11.5, 700, true), color: FAINT, h: 20 });
+    push({ t: 'center', text: '본 영수증은 재미로 보는 참고 자료입니다', font: f(10), color: FAINT, h: 18 });
+    push({ t: 'gap', h: 26 });
+  }
+
+  /* ---------- 오늘의 운세 영수증 ----------
    * 그리기 전에 항목 목록을 만들어 전체 높이를 먼저 구합니다. */
-  function buildOps(ctx, data) {
+  function buildDailyOps(ctx, data) {
     const { profile, saju, fortune, tarot, lunar } = data;
     const CW = W - PAD * 2;
     const ops = [];
     const push = (o) => ops.push(o);
 
     const d = fortune.date;
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} (${'일월화수목금토'[d.getDay()]})`;
+    const dateStr = dateLabel(d);
 
-    push({ t: 'gap', h: 26 });
-    push({ t: 'center', text: '🏪 운세 편의점', font: f(23, 800), h: 30 });
-    push({ t: 'center', text: '24시간 열려 있는 나의 운세 가게', font: f(11), color: FAINT, h: 18 });
-    push({ t: 'gap', h: 8 });
-    push({ t: 'sep', style: 'double', h: 12 });
+    pushHeader(push, null);
 
     push({ t: 'row', l: dateStr, r: `일진 ${fortune.day.name}`, font: f(11.5, 400, true), color: FAINT, h: 20 });
     push({ t: 'row', l: '손님', r: `${profile.name} 님`, font: f(12.5, 700), h: 21 });
@@ -90,24 +120,63 @@
 
     push({ t: 'sep', style: 'double', h: 16 });
     push({ t: 'row', l: '합계', r: `${fortune.scores.total}점 / 100점`, font: f(15, 800), h: 26 });
-    push({ t: 'gap', h: 10 });
 
-    // 바코드
-    push({ t: 'barcode', h: 52 });
-    push({ t: 'center', text: fortune.day.hanja + ' · ' + dateStr.replace(/-/g, ''), font: f(10, 400, true), color: FAINT, h: 18 });
-    push({ t: 'gap', h: 8 });
+    pushFooter(push, data.seed, fortune.day.hanja + ' · ' + dateStr.replace(/-/g, ''),
+      '감사합니다. 내일도 들러 주세요 🌙');
+    return ops;
+  }
 
-    push({ t: 'center', text: '감사합니다. 내일도 들러 주세요 🌙', font: f(12, 700), h: 22 });
-    push({ t: 'center', text: '본 영수증은 재미로 보는 참고 자료입니다', font: f(10), color: FAINT, h: 18 });
-    push({ t: 'gap', h: 26 });
+  /* ---------- 궁합 영수증 ---------- */
+  function buildMatchOps(ctx, data) {
+    const { me, you, meSaju, youSaju, match, unlocked, date } = data;
+    const CW = W - PAD * 2;
+    const ops = [];
+    const push = (o) => ops.push(o);
 
+    pushHeader(push, '💞 궁합 영수증');
+
+    push({ t: 'row', l: dateLabel(date), r: receiptNo(data.seed), font: f(11.5, 400, true), color: FAINT, h: 20 });
+    push({ t: 'sep', style: 'dash', h: 14 });
+
+    // 두 사람
+    push({ t: 'row', l: me.name, r: `${meSaju.dayMasterName}${meSaju.dayMasterElem} · ${meSaju.zodiac}띠`, font: f(13.5, 700), h: 24 });
+    push({ t: 'center', text: '×', font: f(13, 800), color: FAINT, h: 20 });
+    push({ t: 'row', l: you.name, r: `${youSaju.dayMasterName}${youSaju.dayMasterElem} · ${youSaju.zodiac}띠`, font: f(13.5, 700), h: 24 });
+
+    push({ t: 'sep', style: 'dash', h: 16 });
+
+    match.categories.forEach(c => {
+      push({ t: 'row', l: `  ${c.emoji} ${c.name}`, r: `${c.score} / ${c.max}`, font: f(13), h: 25 });
+    });
+
+    push({ t: 'sep', style: 'double', h: 16 });
+    push({ t: 'row', l: '합계', r: `${match.total}점 / 100점`, font: f(17, 800), h: 29 });
+    ctx.font = f(13.5, 800);
+    wrapText(ctx, `「 ${match.verdict} 」`, CW).forEach(line => {
+      push({ t: 'center', text: line, font: f(13.5, 800), h: 22 });
+    });
+    push({ t: 'gap', h: 6 });
+    push({ t: 'sep', style: 'dash', h: 16 });
+    push({ t: 'center', text: `일지 ${match.branchPair} · 일간 ${match.stemPair} · 띠 ${match.zodiacPair}`, font: f(12), color: FAINT, h: 22 });
+
+    // 조언은 상세 풀이를 연 경우에만 인쇄합니다
+    if (unlocked) {
+      push({ t: 'sep', style: 'dash', h: 16 });
+      ctx.font = f(12.5);
+      wrapText(ctx, '💡 ' + match.advice, CW - 8).forEach(line => {
+        push({ t: 'center', text: line, font: f(12.5), h: 21 });
+      });
+    }
+
+    pushFooter(push, data.seed, `${meSaju.day.hanja} × ${youSaju.day.hanja}`,
+      '우리 궁합도 뽑아 보실래요? 💞');
     return ops;
   }
 
   /* ---------- 그리기 ---------- */
   function render(data) {
     const measure = document.createElement('canvas').getContext('2d');
-    const ops = buildOps(measure, data);
+    const ops = data.type === 'match' ? buildMatchOps(measure, data) : buildDailyOps(measure, data);
     const H = ops.reduce((s, o) => s + o.h, 0);
 
     const cv = document.createElement('canvas');
@@ -196,8 +265,9 @@
   }
 
   function fileName(data) {
-    const d = data.fortune.date;
-    return `운세편의점_영수증_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.png`;
+    const d = data.type === 'match' ? data.date : data.fortune.date;
+    const kind = data.type === 'match' ? '궁합' : '영수증';
+    return `운세편의점_${kind}_${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.png`;
   }
 
   function download(canvas, name) {
@@ -234,6 +304,6 @@
     } catch (e) { return false; }
   }
 
-  global.Receipt = { render, toBlob, download, share, fileName, canShareFiles, wrapText };
+  global.Receipt = { render, toBlob, download, share, fileName, canShareFiles, wrapText, receiptNo, SITE };
   if (typeof module !== 'undefined' && module.exports) module.exports = global.Receipt;
 })(typeof window !== 'undefined' ? window : globalThis);

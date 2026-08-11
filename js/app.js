@@ -300,9 +300,27 @@
       seed: todayKey() + '-' + profileSig(profile),
     });
 
+    showReceiptModal(canvas, Receipt.fileName({ fortune }), '🧾 오늘의 영수증');
+  }
+
+  /* 궁합 영수증 — 공유가 목적이라 결제 없이 누구나 뽑을 수 있습니다.
+   * 다만 조언 문구는 상세 풀이를 연 분에게만 인쇄됩니다. */
+  function openMatchReceipt(match, unlocked) {
+    const canvas = Receipt.render({
+      type: 'match',
+      me: profile, you: partner,
+      meSaju: saju, youSaju: partnerSaju,
+      match, unlocked,
+      date: new Date(),
+      seed: profileSig(profile) + '::' + partnerSig(partner),
+    });
+    showReceiptModal(canvas, Receipt.fileName({ type: 'match', date: new Date() }), '💞 궁합 영수증');
+  }
+
+  function showReceiptModal(canvas, name, title) {
     const modal = $('#modal');
     $('#modal-content').innerHTML = `
-      <div class="modal-title">🧾 오늘의 영수증</div>
+      <div class="modal-title">${title}</div>
       <div class="receipt-wrap" id="receipt-wrap"></div>
       <div class="modal-actions" style="margin-top:14px;">
         <button class="btn-gold" id="btn-receipt-share">${Receipt.canShareFiles() ? '📤 공유하기' : '💾 이미지 저장'}</button>
@@ -314,7 +332,6 @@
     modal.classList.remove('hidden');
     modal.onclick = (e) => { if (e.target === modal) closeModal(); };
 
-    const name = Receipt.fileName({ fortune });
     $('#btn-receipt-share').addEventListener('click', () => {
       Receipt.share(canvas, name).then(r => {
         if (r === 'downloaded') toast('💾 영수증을 저장했어요');
@@ -936,6 +953,9 @@
             <div class="cat-bar-wrap"><div class="cat-bar" style="width:${(c.score / c.max) * 100}%"></div></div>
             <div class="cat-score">${c.score}/${c.max}</div>
           </div>`).join('')}
+        <div style="height:6px;"></div>
+        <button class="btn-gold" id="btn-match-receipt">🧾 궁합 영수증 뽑아서 공유하기</button>
+        <p class="muted" style="margin-top:8px;text-align:center;">상대에게 보내면 그 사람도 자기 궁합을 볼 수 있어요</p>
       </div>
 
       ${unlocked ? `
@@ -971,6 +991,8 @@
 
       <div class="notice-box">💡 궁합은 두 사람의 타고난 기질이 어떻게 만나는지를 보는 참고 자료예요. 점수가 낮다고 안 될 인연은 없고, 높다고 저절로 되는 인연도 없습니다.</div>
     `;
+
+    $('#btn-match-receipt').addEventListener('click', () => openMatchReceipt(r, unlocked));
 
     if (!unlocked) {
       $('#btn-unlock-match').addEventListener('click', () => {
