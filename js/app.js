@@ -151,7 +151,7 @@
     $('#tab-home').innerHTML = `
       <div class="section-head">
         <div class="greeting">어서 오세요, ${esc(profile.name)}님 ${symEmoji(dm) || '🏪'}</div>
-        <div class="date-line">${dateStr} · <span class="iljin-chip">오늘의 일진 ${f.day.name} (${f.day.hanja})</span></div>
+        <div class="date-line">${dateStr} · <span class="iljin-chip">오늘의 ${term('일진')} ${f.day.name} (${f.day.hanja})</span></div>
       </div>
 
       <div class="card">
@@ -277,14 +277,14 @@
 
     const pillarCol = (label, p, gods) => p ? `
       <div class="pillar">
-        <div class="p-label">${label}</div>
+        <div class="p-label">${term(label)}</div>
         <div class="p-hanja">${p.hanja[0]}<br/>${p.hanja[1]}</div>
         <div class="p-han">${p.name}</div>
         <span class="elem-chip" style="background:${Saju.ELEM_COLOR[p.stemElem]}">${p.stemElem}</span><span class="elem-chip" style="background:${Saju.ELEM_COLOR[p.branchElem]}">${p.branchElem}</span>
-        ${gods ? `<div class="p-god">${gods.stem}<br/>${gods.branch}</div>` : ''}
+        ${gods ? `<div class="p-god">${term(gods.stem)}<br/>${term(gods.branch)}</div>` : ''}
       </div>` : `
       <div class="pillar">
-        <div class="p-label">${label}</div>
+        <div class="p-label">${term(label)}</div>
         <div class="p-hanja" style="color:var(--sub)">?<br/>?</div>
         <div class="p-han muted">시간 모름</div>
       </div>`;
@@ -298,14 +298,15 @@
       </div>
 
       <div class="card">
-        <div class="card-title">四柱 나의 네 기둥</div>
+        <div class="card-title">${term('사주팔자', '四柱 나의 네 기둥')}</div>
+        <div class="term-hint">💡 점선이 그어진 낱말을 누르면 뜻풀이가 나와요</div>
         <div class="pillars">
           ${pillarCol('시주', saju.hour, g.hour)}
           ${pillarCol('일주', saju.day, g.day)}
           ${pillarCol('월주', saju.month, g.month)}
           ${pillarCol('년주', saju.year, g.year)}
         </div>
-        <p class="muted" style="margin-top:10px;">일간(일주의 천간) <b>${saju.dayMasterName}(${saju.dayMasterHanja})</b>이 사주의 주인공, 바로 "나"입니다.</p>
+        <p class="muted" style="margin-top:10px;">${term('일간')}(${term('일주')}의 ${term('천간')}) <b>${saju.dayMasterName}(${saju.dayMasterHanja})</b>이 사주의 주인공, 바로 "나"입니다.</p>
       </div>
 
       <div class="card">
@@ -322,7 +323,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">🌈 오행 밸런스</div>
+        <div class="card-title">🌈 ${term('오행')} 밸런스</div>
         ${Saju.ELEMENTS.map(e => `
           <div class="elem-bar-row">
             <div class="elem-name">${SajuData.ELEMENT_DESC[e].emoji} ${e}(${{ 목: '木', 화: '火', 토: '土', 금: '金', 수: '水' }[e]})</div>
@@ -339,7 +340,28 @@
 
       <div id="deep-section"></div>
 
-      <div class="notice-box">ℹ️ 본 서비스의 사주 계산은 절기 근사식을 사용하며, 절기 경계일(입춘 등) 전후 출생은 실제와 1일 차이가 날 수 있습니다. 해석은 재미와 자기 이해를 위한 참고 자료로 활용해 주세요.</div>
+      ${saju.boundaryUncertain ? `
+      <div class="card" style="border-color:var(--gold);">
+        <div class="card-title">⚠️ 확인이 필요해요</div>
+        <p class="fortune-text">태어나신 날이 ${term('절기')}가 바뀌는 바로 그날입니다. 절기는 <b>시각</b>까지 따지기 때문에, 태어난 시간에 따라 ${term('년주')} 또는 ${term('월주')}가 달라질 수 있어요.</p>
+        <p class="muted" style="margin-top:8px;">현재는 정오(12시)에 태어난 것으로 계산했습니다. 정확한 시간을 아신다면 ⚙️에서 입력해 주세요.</p>
+      </div>` : ''}
+
+      <div class="card">
+        <div class="card-title">📖 이 앱은 이렇게 계산합니다</div>
+        <div class="info-line"><span class="ik">${term('절기')}</span><span>태양의 위치(황경)를 직접 계산해 절기 <b>시각까지</b> 구합니다. 근사식을 쓰지 않아 입춘 등 경계일 출생도 정확합니다.</span></div>
+        <div class="info-line"><span class="ik">${term('태양시')}</span><span>${profile.solarCorrection === false ? '보정하지 않음 (해외 출생)' : `시계 시각에서 <b>${saju.solarShiftMin}분</b>을 빼서 계산했습니다.`}</span></div>
+        ${profile.solarCorrection !== false && saju.solarShiftMin !== 30 ? `<p class="muted" style="margin-top:6px;">💡 ${profile.year}년 당시 한국의 표준시가 지금과 달랐습니다${saju.solarShiftMin === 90 ? ' (서머타임 시행 중)' : saju.solarShiftMin === 0 ? ' (동경 127.5도 기준)' : ''}. 그래서 보정값이 요즘(30분)과 다릅니다.</p>` : ''}
+        <div class="info-line"><span class="ik">한계</span><span>음력 생일 입력은 아직 지원하지 않습니다(양력만). 해석은 재미와 자기 이해를 위한 참고 자료예요.</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📚 용어 사전</div>
+        <p class="muted" style="margin-bottom:10px;">어려운 말이 나오면 언제든 여기서 찾아보세요.</p>
+        <div class="glossary-grid">
+          ${Object.keys(SajuData.GLOSSARY).map(w => `<button class="term-chip" data-term="${w}">${w}</button>`).join('')}
+        </div>
+      </div>
     `;
 
     const genderBtn = $('#btn-set-gender');
@@ -353,7 +375,7 @@
     if (!saju.luck) {
       return `
         <div class="card">
-          <div class="card-title">🌊 대운 (10년 주기 운의 흐름)</div>
+          <div class="card-title">🌊 ${term('대운')} (10년 주기 운의 흐름)</div>
           <p class="fortune-text">대운은 <b>태어난 해의 음양과 성별</b>이 맞물려 방향이 정해집니다.
           (양남음녀는 순행, 음남양녀는 역행) 성별을 선택하지 않으셔서 계산할 수 없어요.</p>
           <button class="btn-ghost btn-sm" id="btn-set-gender" style="margin-top:10px;">⚙️ 성별 선택하고 대운 보기</button>
@@ -363,7 +385,7 @@
     const age = ageOf(profile);
     return `
       <div class="card">
-        <div class="card-title">🌊 대운 (10년 주기 운의 흐름)<span class="spacer"></span><span class="muted">${L.direction} · 대운수 ${L.startAge}</span></div>
+        <div class="card-title">🌊 ${term('대운')} (10년 주기 운의 흐름)<span class="spacer"></span><span class="muted">${term(L.direction)} · ${term('대운수')} ${L.startAge}</span></div>
         <p class="fortune-text" style="margin-bottom:12px;">${SajuData.LUCK_INTRO[L.direction]}</p>
         ${L.list.map(d => {
           const now = age >= d.from && age <= d.to;
@@ -371,7 +393,7 @@
           return `
           <div class="week-row" ${now ? 'style="background:rgba(139,111,240,0.12);border-radius:10px;padding-left:8px;padding-right:8px;"' : ''}>
             <div class="week-day">${d.from}~${d.to}세${now ? '<small style="color:var(--gold)">지금 이 대운</small>' : ''}</div>
-            <div class="week-head"><b style="color:var(--text)">${d.hanja} ${d.name}</b> · ${god}</div>
+            <div class="week-head"><b style="color:var(--text)">${d.hanja} ${d.name}</b> · ${term(god)}</div>
             <div class="week-score" style="font-size:12px;">${d.stemElem}${d.branchElem}</div>
           </div>`;
         }).join('')}
@@ -384,7 +406,7 @@
     if (!saju.sinsal.length) return '';
     return `
       <div class="card">
-        <div class="card-title">✨ 내 사주의 신살(神煞)</div>
+        <div class="card-title">✨ 내 사주의 ${term('신살', '신살(神煞)')}</div>
         ${saju.sinsal.map(n => {
           const s = SajuData.SINSAL_DESC[n];
           return `
@@ -451,10 +473,10 @@
       <div class="card">
         <div class="card-title">🔮 심층 사주 리포트</div>
 
-        <p class="fortune-text" style="margin-bottom:12px;">내 사주에 들어와 있는 <b>십신(十神)의 별</b>들입니다. 각 별은 인생에서 강하게 작동하는 에너지의 방향을 보여 줍니다.</p>
+        <p class="fortune-text" style="margin-bottom:12px;">내 사주에 들어와 있는 <b>${term('십신', '십신(十神)의 별')}</b>들입니다. 각 별은 인생에서 강하게 작동하는 에너지의 방향을 보여 줍니다.</p>
         ${godList.map(([pos, name]) => {
           const d = SajuData.TEN_GOD_DESC[name];
-          return `<div class="info-line"><span class="ik">${name}</span><span><b>${d.short}</b> <span class="muted">(${pos})</span><br/><span class="muted">${d.desc}</span></span></div>`;
+          return `<div class="info-line"><span class="ik">${term(name)}</span><span><b>${d.short}</b> <span class="muted">(${pos})</span><br/><span class="muted">${d.desc}</span></span></div>`;
         }).join('')}
 
         <div class="divider"></div>
@@ -468,7 +490,7 @@
         ${renderSpouseBlock()}
 
         <div class="divider"></div>
-        <div class="card-title">📆 ${new Date().getFullYear()}년 세운 · 지금의 대운</div>
+        <div class="card-title">📆 ${new Date().getFullYear()}년 ${term('세운')} · 지금의 ${term('대운')}</div>
         ${renderYearlyBlock()}
 
         <div class="divider"></div>
@@ -485,7 +507,7 @@
     const body = sp.count >= 3 ? D.many : sp.count === 0 ? D.none : D.one;
     return `
       <div class="rel-comment" style="margin-top:10px;">
-        ${D.intro} 당신의 사주에는 ${D.star}이 <b>${sp.count}개</b> 있습니다.<br/><br/>${body}
+        ${D.intro} 당신의 사주에는 ${term(saju.gender === 'M' ? '재성' : '관성', D.star)}이 <b>${sp.count}개</b> 있습니다.<br/><br/>${body}
       </div>`;
   }
 
@@ -770,6 +792,30 @@
       { label: '취소', fn: () => {} },
     ]);
   }
+
+  /* ==================== 용어 사전 ====================
+   * term('일간') → 점선 밑줄이 그어진 칩. 누르면 뜻풀이 모달이 열립니다. */
+  function term(word, label) {
+    const g = SajuData.GLOSSARY[word];
+    if (!g) return esc(label || word);
+    return `<button class="term" data-term="${esc(word)}">${esc(label || word)}<span class="term-q">?</span></button>`;
+  }
+
+  function openGlossary(word) {
+    const g = SajuData.GLOSSARY[word];
+    if (!g) return;
+    confirmModal(
+      `${word} <span class="term-read">${g.read}</span>`,
+      `<div class="term-plain">💬 ${g.plain}</div><p style="margin-top:10px;">${g.full}</p>`,
+      [{ label: '알겠어요', gold: true, fn: () => {} }]
+    );
+  }
+
+  // 본문 칩(.term)과 사전 목록 칩(.term-chip) 모두 문서 전체에 위임
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-term]');
+    if (btn) openGlossary(btn.dataset.term);
+  });
 
   /* ==================== 공용 UI ==================== */
   function toast(msg) {
