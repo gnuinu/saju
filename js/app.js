@@ -1,5 +1,5 @@
 /* ============================================================
- * app.js — 달빛사주 UI 로직
+ * app.js — 운세 편의점 UI 로직
  * ============================================================ */
 (function () {
   'use strict';
@@ -70,7 +70,7 @@
     $('#profile-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const p = {
-        name: $('#in-name').value.trim() || '달빛님',
+        name: $('#in-name').value.trim() || '손님',
         year: +$('#in-year').value,
         month: +$('#in-month').value,
         day: +$('#in-day').value,
@@ -150,7 +150,7 @@
 
     $('#tab-home').innerHTML = `
       <div class="section-head">
-        <div class="greeting">${esc(profile.name)}님, 안녕하세요 ${symEmoji(dm) || '🌙'}</div>
+        <div class="greeting">어서 오세요, ${esc(profile.name)}님 ${symEmoji(dm) || '🏪'}</div>
         <div class="date-line">${dateStr} · <span class="iljin-chip">오늘의 일진 ${f.day.name} (${f.day.hanja})</span></div>
       </div>
 
@@ -190,25 +190,25 @@
       <div id="weekly-section"></div>
 
       <div class="card" id="attend-card">
-        <div class="card-title">📅 출석 체크<span class="spacer"></span><span class="muted">매일 +${Store.REWARDS.attendance}냥</span></div>
-        <button class="btn-gold" id="btn-attend">${Store.canAttend(todayKey()) ? '오늘 출석하고 엽전 받기 🪙' : '오늘 출석 완료! 내일 또 만나요 ✅'}</button>
+        <div class="card-title">🔖 출석 도장<span class="spacer"></span><span class="muted">매일 +${Store.REWARDS.attendance}냥</span></div>
+        <button class="btn-gold" id="btn-attend">${Store.canAttend(todayKey()) ? '오늘 도장 찍고 엽전 받기 🪙' : '오늘 도장 완료! 내일 또 오세요 ✅'}</button>
       </div>
     `;
 
     $('#btn-attend').addEventListener('click', () => {
       if (Store.attend(todayKey())) {
-        toast('🪙 출석 완료! 엽전 +' + Store.REWARDS.attendance + '냥');
+        toast('🪙 도장 찍었어요! 엽전 +' + Store.REWARDS.attendance + '냥');
         renderCoins();
-        $('#btn-attend').textContent = '오늘 출석 완료! 내일 또 만나요 ✅';
+        $('#btn-attend').textContent = '오늘 도장 완료! 내일 또 오세요 ✅';
       } else {
-        toast('오늘은 이미 출석했어요 😊');
+        toast('오늘 도장은 이미 찍으셨어요 😊');
       }
     });
 
     renderWeekly();
   }
 
-  /* ---------- 주간 운세 (프리미엄) ---------- */
+  /* ---------- 주간 운세 (유료 상품) ---------- */
   function renderWeekly() {
     const wk = Fortune.weekKey(new Date());
     const unlocked = Store.isWeeklyUnlocked(wk);
@@ -240,9 +240,9 @@
           renderCoins();
           renderWeekly();
         } else {
-          confirmModal('엽전이 부족해요 🥲', `주간 운세는 ${Store.PRICES.weekly}냥이 필요해요.<br/>광고를 보거나 출석 체크로 엽전을 모을 수 있어요.`, [
+          confirmModal('엽전이 부족해요 🥲', `주간 운세는 ${Store.PRICES.weekly}냥이 필요해요.<br/>광고를 보시거나 출석 도장을 찍으면 엽전을 드려요.`, [
             { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-            { label: '상점 가기', fn: () => switchTab('shop') },
+            { label: '계산대 가기', fn: () => switchTab('shop') },
           ]);
         }
       });
@@ -397,7 +397,7 @@
       </div>`;
   }
 
-  /* ---------- 심층 리포트 (프리미엄) ---------- */
+  /* ---------- 심층 리포트 (유료 상품) ---------- */
   function renderDeepReport() {
     const sig = profileSig(profile);
     const unlocked = Store.isDeepUnlocked(sig);
@@ -424,9 +424,9 @@
           renderCoins();
           renderDeepReport();
         } else {
-          confirmModal('엽전이 부족해요 🥲', `심층 리포트는 ${Store.PRICES.deepReport}냥이 필요해요.<br/>광고 시청과 출석 체크로 엽전을 모아 보세요.`, [
+          confirmModal('엽전이 부족해요 🥲', `심층 리포트는 ${Store.PRICES.deepReport}냥이 필요해요.<br/>광고 시청과 출석 도장으로 엽전을 모아 보세요.`, [
             { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-            { label: '상점 가기', fn: () => switchTab('shop') },
+            { label: '계산대 가기', fn: () => switchTab('shop') },
           ]);
         }
       });
@@ -472,7 +472,7 @@
         ${renderYearlyBlock()}
 
         <div class="divider"></div>
-        <div class="card-title">🧭 달빛 조언</div>
+        <div class="card-title">🧭 점장님 한마디</div>
         <p class="fortune-text">${dm.caution} ${SajuData.ELEMENT_DESC[saju.lacking].lack}</p>
       </div>`;
   }
@@ -533,7 +533,7 @@
       <div class="card">
         <div class="tarot-stage" id="tarot-stage"></div>
       </div>
-      <div class="notice-box">🃏 매일 자정이 지나면 새로운 카드를 무료로 뽑을 수 있어요. 카드는 나의 생년월일과 날짜의 기운으로 정해집니다.</div>
+      <div class="notice-box">🃏 매일 자정이 지나면 새 카드가 입고돼요. 하루 한 장은 무료로 뽑으실 수 있습니다. 카드는 나의 생년월일과 날짜의 기운으로 정해집니다.</div>
     `;
 
     const stage = $('#tarot-stage');
@@ -564,7 +564,7 @@
       if (!Store.payTarotExtra()) {
         confirmModal('엽전이 부족해요 🥲', `추가 뽑기는 ${Store.PRICES.tarotExtra}냥이 필요해요.`, [
           { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-          { label: '상점 가기', fn: () => switchTab('shop') },
+          { label: '계산대 가기', fn: () => switchTab('shop') },
         ]);
         return;
       }
@@ -651,8 +651,8 @@
 
     wrap.innerHTML = `
       <div class="section-head">
-        <h2>🛍️ 엽전 상점</h2>
-        <p>엽전으로 주간 운세, 심층 풀이, 타로 추가 뽑기를 열 수 있어요.</p>
+        <h2>🛒 계산대</h2>
+        <p>저희 가게는 엽전으로 계산합니다. 광고를 보시거나 매일 도장을 찍으면 엽전을 드려요.</p>
       </div>
 
       <div class="card">
@@ -661,25 +661,25 @@
           📺 광고 보고 +${Store.REWARDS.ad}냥 받기 (오늘 ${adCnt}/${Store.AD_DAILY_LIMIT})
         </button>
         <div style="height:8px;"></div>
-        <button class="btn-ghost" id="btn-shop-attend">📅 출석 체크 +${Store.REWARDS.attendance}냥</button>
+        <button class="btn-ghost" id="btn-shop-attend">🔖 출석 도장 찍고 +${Store.REWARDS.attendance}냥</button>
       </div>
 
       <div class="card">
         <div class="card-title">🪙 엽전 충전<span class="spacer"></span><span class="muted">결제 준비 중</span></div>
         ${Store.IAP_PACKAGES.map(p => `
           <div class="shop-item">
-            <div class="shop-ico">${p.sub ? '🌙' : '🪙'}</div>
+            <div class="shop-ico">${p.sub ? '🎟️' : '🪙'}</div>
             <div class="shop-info">
-              <div class="shop-name">${p.sub ? '달빛 프리미엄 구독' : '엽전 ' + p.coins + '냥'}</div>
+              <div class="shop-name">${p.sub ? '운세 편의점 정기권' : '엽전 ' + p.coins + '냥'}</div>
               <div class="shop-desc">${p.bonus || '기본 패키지'}</div>
             </div>
             <button class="btn-ghost btn-sm" data-pkg="${p.id}">${p.price}</button>
           </div>`).join('')}
-        <p class="muted" style="margin-top:10px;">💳 결제 기능은 현재 준비 중이에요. 지금은 광고 시청과 출석으로 엽전을 모을 수 있습니다.</p>
+        <p class="muted" style="margin-top:10px;">💳 결제 기능은 현재 준비 중이에요. 지금은 광고 시청과 출석 도장으로 엽전을 모으실 수 있어요.</p>
       </div>
 
       <div class="card">
-        <div class="card-title">✨ 엽전 사용처</div>
+        <div class="card-title">🧾 오늘의 진열대</div>
         <div class="shop-item"><div class="shop-ico">🗓️</div><div class="shop-info"><div class="shop-name">주간 운세</div><div class="shop-desc">7일간의 흐름 + BEST/주의 날짜</div></div><div class="shop-price">${Store.PRICES.weekly}냥/주</div></div>
         <div class="shop-item"><div class="shop-ico">🔮</div><div class="shop-info"><div class="shop-name">심층 사주 리포트</div><div class="shop-desc">십신·직업·연애 풀이 (영구 소장)</div></div><div class="shop-price">${Store.PRICES.deepReport}냥</div></div>
         <div class="shop-item"><div class="shop-ico">🎴</div><div class="shop-info"><div class="shop-name">타로 추가 뽑기</div><div class="shop-desc">하루 1장 무료 이후 추가 뽑기</div></div><div class="shop-price">${Store.PRICES.tarotExtra}냥/장</div></div>
@@ -689,11 +689,11 @@
     $('#btn-shop-ad').addEventListener('click', watchAd);
     $('#btn-shop-attend').addEventListener('click', () => {
       if (Store.attend(todayKey())) {
-        toast('🪙 출석 완료! 엽전 +' + Store.REWARDS.attendance + '냥');
+        toast('🪙 도장 찍었어요! 엽전 +' + Store.REWARDS.attendance + '냥');
         renderCoins();
         renderHome();
       } else {
-        toast('오늘은 이미 출석했어요 😊');
+        toast('오늘 도장은 이미 찍으셨어요 😊');
       }
     });
     wrap.querySelectorAll('[data-pkg]').forEach(btn => {

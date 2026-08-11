@@ -32,7 +32,7 @@
     { id: 'coin_100', coins: 100, price: '₩1,500', bonus: '' },
     { id: 'coin_330', coins: 330, price: '₩4,400', bonus: '+10% 보너스' },
     { id: 'coin_700', coins: 700, price: '₩8,800', bonus: '+17% 보너스' },
-    { id: 'sub_month', coins: null, price: '₩3,900/월', bonus: '프리미엄 구독: 주간운세·심층풀이·타로 무제한', sub: true },
+    { id: 'sub_month', coins: null, price: '₩3,900/월', bonus: '정기권: 주간운세·심층풀이·타로 무제한', sub: true },
   ];
 
   /* ---------- 저장/불러오기 ---------- */
@@ -149,7 +149,7 @@
   function purchasePackage(pkgId, onSuccess, onFail) {
     // === PAYMENT PLACEHOLDER ===
     // 예: iap.purchase(pkgId).then(onSuccess).catch(onFail)
-    onFail && onFail('결제 기능은 준비 중입니다. 곧 만나요! 🙏');
+    onFail && onFail('아직 준비 중인 상품이에요. 곧 입고됩니다! 🙏');
   }
 
   global.Store = {

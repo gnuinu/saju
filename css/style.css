@@ -1,5 +1,5 @@
 /* ============================================================
- * 달빛사주 — 스타일
+ * 운세 편의점 — 스타일
  * 모바일 우선, 밤하늘 테마
  * ============================================================ */
 :root {
@@ -61,7 +61,11 @@ body {
   background: var(--card); border: 1px solid var(--line);
   border-radius: 20px; padding: 28px 22px;
 }
-.onboard-title { text-align: center; font-size: 30px; margin-bottom: 8px; }
+.onboard-title { text-align: center; font-size: 30px; margin-bottom: 4px; }
+.onboard-tagline {
+  text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+  color: var(--gold); margin-bottom: 14px;
+}
 .onboard-sub { text-align: center; color: var(--sub); font-size: 14px; margin-bottom: 24px; }
 .onboard-note { text-align: center; color: var(--sub); font-size: 12px; margin-top: 14px; }
 
