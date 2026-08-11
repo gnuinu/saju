@@ -276,6 +276,12 @@ console.log('[영수증 카드]');
 const Receipt = require('../js/receipt.js');
 eq(Receipt.fileName({ fortune: { date: new Date(2026, 7, 11) } }), '운세편의점_영수증_20260811.png', '영수증 파일명 생성');
 eq(Receipt.fileName({ fortune: { date: new Date(2026, 0, 5) } }), '운세편의점_영수증_20260105.png', '한 자리 월/일도 0으로 채움');
+eq(Receipt.fileName({ type: 'match', date: new Date(2026, 7, 11) }), '운세편의점_궁합_20260811.png', '궁합 영수증 파일명');
+// 영수증 번호는 같은 시드면 항상 같아야 함 (공유했을 때 서로 같은 번호)
+eq(Receipt.receiptNo('a::b'), Receipt.receiptNo('a::b'), '같은 시드 → 같은 영수증 번호');
+eq(Receipt.receiptNo('a::b') !== Receipt.receiptNo('a::c'), true, '다른 시드 → 다른 영수증 번호');
+eq(/^No\. [0-9A-F]{4}-[0-9A-F]{2}$/.test(Receipt.receiptNo('x')), true, '영수증 번호 형식');
+eq(Receipt.SITE, 'gnuinu.github.io/saju', '영수증에 앱 주소가 박혀 공유 시 유입 경로가 됨');
 // 줄바꿈: 폭을 넘지 않게 쪼개고 글자를 잃지 않아야 함
 const fakeCtx = { measureText: (s) => ({ width: s.length * 10 }) };
 const wrapped = Receipt.wrapText(fakeCtx, '가나다라마바사아자차카타파하', 50);
