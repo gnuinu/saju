@@ -34,12 +34,20 @@
           </label>
 
           <label class="field">
-            <span>생년월일 <small>(양력 기준)</small></span>
-            <div class="row3">
+            <span>생년월일</span>
+            <div class="seg" id="in-caltype">
+              <button type="button" data-v="solar" class="seg-btn active">양력</button>
+              <button type="button" data-v="lunar" class="seg-btn">음력</button>
+            </div>
+            <div class="row3" style="margin-top:8px;">
               <select id="in-year" required></select>
               <select id="in-month" required></select>
               <select id="in-day" required></select>
             </div>
+            <label class="check-line hidden" id="leap-line">
+              <input type="checkbox" id="in-leap" /> 윤달이에요 <span id="leap-hint"></span>
+            </label>
+            <p class="cal-preview" id="cal-preview"></p>
           </label>
 
           <label class="field">
@@ -123,6 +131,7 @@
   </div>
 
   <script src="js/saju.js"></script>
+  <script src="js/lunar.js"></script>
   <script src="js/data.js"></script>
   <script src="js/tarot.js"></script>
   <script src="js/mbti.js"></script>

@@ -45,14 +45,69 @@
     for (let y = nowY; y >= 1930; y--) yearSel.add(new Option(y + '년', y));
     yearSel.value = 1995;
     for (let m = 1; m <= 12; m++) monthSel.add(new Option(m + '월', m));
-    for (let d = 1; d <= 31; d++) daySel.add(new Option(d + '일', d));
+    rebuildDayOptions(31);
     for (let h = 0; h < 24; h++) hourSel.add(new Option(String(h).padStart(2, '0') + '시', h));
     hourSel.value = 12;
     for (let mi = 0; mi < 60; mi += 5) minSel.add(new Option(String(mi).padStart(2, '0') + '분', mi));
     Mbti.TYPES.forEach(t => mbtiSel.add(new Option(t + ' — ' + Mbti.TYPE_DESC[t].nick, t)));
   }
 
+  /* ---------- 양력/음력 입력 ---------- */
+  function rebuildDayOptions(n) {
+    const sel = $('#in-day');
+    const keep = +sel.value || 1;
+    sel.innerHTML = '';
+    for (let d = 1; d <= n; d++) sel.add(new Option(d + '일', d));
+    sel.value = Math.min(keep, n);
+  }
+
+  function calType() { return $('#in-caltype .seg-btn.active').dataset.v; }
+
+  // 음력 선택 시: 윤달 표시 여부, 그 달의 일수(29/30), 양력 환산 미리보기를 갱신
+  function updateCalendarUI() {
+    const preview = $('#cal-preview');
+    const leapLine = $('#leap-line');
+    const y = +$('#in-year').value, m = +$('#in-month').value;
+
+    if (calType() === 'solar') {
+      leapLine.classList.add('hidden');
+      $('#in-leap').checked = false;
+      rebuildDayOptions(31);
+      preview.textContent = '';
+      return;
+    }
+
+    const leapM = Lunar.leapMonthOf(y);
+    if (leapM === m) {
+      leapLine.classList.remove('hidden');
+      $('#leap-hint').innerHTML = `<span class="muted">— ${y}년에는 윤${leapM}월이 있어요</span>`;
+    } else {
+      leapLine.classList.add('hidden');
+      $('#in-leap').checked = false;
+    }
+
+    const isLeap = $('#in-leap').checked;
+    const days = Lunar.daysInLunarMonth(y, m, isLeap);
+    rebuildDayOptions(days || 30);
+
+    const s = Lunar.lunarToSolar(y, m, isLeap, +$('#in-day').value);
+    preview.innerHTML = s
+      ? `📅 양력으로는 <b>${s.year}년 ${s.month}월 ${s.day}일</b>이에요`
+      : '';
+  }
+
   function bindGlobalEvents() {
+    // 양력/음력 전환
+    $('#in-caltype').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('seg-btn')) return;
+      $$('#in-caltype .seg-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      updateCalendarUI();
+    });
+    ['#in-year', '#in-month', '#in-day', '#in-leap'].forEach(sel => {
+      $(sel).addEventListener('change', updateCalendarUI);
+    });
+
     // 성별 세그먼트
     $('#in-gender').addEventListener('click', (e) => {
       if (!e.target.classList.contains('seg-btn')) return;
@@ -69,11 +124,26 @@
     // 프로필 저장
     $('#profile-form').addEventListener('submit', (e) => {
       e.preventDefault();
+      const inY = +$('#in-year').value, inM = +$('#in-month').value, inD = +$('#in-day').value;
+      const isLunar = calType() === 'lunar';
+      const isLeap = isLunar && $('#in-leap').checked;
+
+      // 음력이면 양력으로 환산해서 저장합니다 (사주 계산은 전부 양력 기준)
+      let sy = inY, sm = inM, sd = inD;
+      if (isLunar) {
+        const s = Lunar.lunarToSolar(inY, inM, isLeap, inD);
+        if (!s) {
+          toast(`음력 ${inY}년 ${isLeap ? '윤' : ''}${inM}월 ${inD}일은 없는 날짜예요 🙏`);
+          return;
+        }
+        sy = s.year; sm = s.month; sd = s.day;
+      }
+
       const p = {
         name: $('#in-name').value.trim() || '손님',
-        year: +$('#in-year').value,
-        month: +$('#in-month').value,
-        day: +$('#in-day').value,
+        year: sy, month: sm, day: sd,
+        calendar: isLunar ? 'lunar' : 'solar',
+        lunarInput: isLunar ? { year: inY, month: inM, day: inD, isLeap: isLeap } : null,
         hour: +$('#in-hour').value,
         minute: +$('#in-minute').value,
         hourUnknown: $('#in-hour-unknown').checked,
@@ -81,7 +151,7 @@
         gender: $('#in-gender .seg-btn.active').dataset.v,
         mbti: $('#in-mbti').value,
       };
-      // 날짜 유효성
+      // 양력 날짜 유효성 (음력은 위 변환에서 이미 검증됨)
       const dt = new Date(p.year, p.month - 1, p.day);
       if (dt.getMonth() + 1 !== p.month || dt.getDate() !== p.day) {
         toast('존재하지 않는 날짜예요. 다시 확인해 주세요 🙏');
@@ -273,7 +343,12 @@
   function renderSaju() {
     const dm = SajuData.DAY_MASTER[saju.dayMasterName];
     const g = saju.tenGods;
-    const birthStr = `${profile.year}. ${profile.month}. ${profile.day}. ${profile.hourUnknown ? '(시간 모름)' : String(profile.hour).padStart(2, '0') + ':' + String(profile.minute).padStart(2, '0')}`;
+    const timeStr = profile.hourUnknown ? '(시간 모름)' : String(profile.hour).padStart(2, '0') + ':' + String(profile.minute).padStart(2, '0');
+    const lun = profile.lunarInput || Lunar.solarToLunar(profile.year, profile.month, profile.day);
+    const lunStr = lun ? `음력 ${lun.year}. ${lun.isLeap ? '윤' : ''}${lun.month}. ${lun.day}.` : '';
+    const birthStr = profile.calendar === 'lunar'
+      ? `${lunStr} · 양력 ${profile.year}. ${profile.month}. ${profile.day}. ${timeStr}`
+      : `양력 ${profile.year}. ${profile.month}. ${profile.day}. ${timeStr} · ${lunStr}`;
 
     const pillarCol = (label, p, gods) => p ? `
       <div class="pillar">
@@ -773,9 +848,15 @@
       { label: '수정하기', gold: true, fn: () => {
         // 기존 값 채워 넣기
         $('#in-name').value = profile.name;
-        $('#in-year').value = profile.year;
-        $('#in-month').value = profile.month;
-        $('#in-day').value = profile.day;
+        // 음력으로 입력했던 분은 음력 값 그대로 되살립니다
+        const lunar = profile.calendar === 'lunar' && profile.lunarInput;
+        $$('#in-caltype .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === (lunar ? 'lunar' : 'solar')));
+        $('#in-year').value = lunar ? profile.lunarInput.year : profile.year;
+        $('#in-month').value = lunar ? profile.lunarInput.month : profile.month;
+        $('#in-leap').checked = lunar ? !!profile.lunarInput.isLeap : false;
+        updateCalendarUI();
+        $('#in-day').value = lunar ? profile.lunarInput.day : profile.day;
+        updateCalendarUI();
         $('#in-hour').value = profile.hour;
         $('#in-minute').value = profile.minute;
         $('#in-hour-unknown').checked = profile.hourUnknown;
