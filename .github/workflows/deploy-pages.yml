@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN에 Pages 배포 권한 부여
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포 방지 (진행 중인 배포는 취소하지 않고 완료시킴)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: 만세력 엔진 테스트
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 엔진 검증 테스트 실행
+        run: node tests/test.js
+
+  deploy:
+    name: Pages 배포
+    needs: test
+    # PR에서는 테스트만 돌리고 배포는 main에 반영된 뒤에만 수행
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pages가 아직 켜져 있지 않으면 자동으로 활성화 (source: GitHub Actions)
+      - name: Pages 설정
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      # 빌드 도구 없는 정적 사이트이므로 저장소 루트를 그대로 업로드
+      - name: 아티팩트 업로드
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: 배포
+        id: deployment
+        uses: actions/deploy-pages@v4
