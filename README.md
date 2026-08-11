@@ -20,8 +20,16 @@ python3 -m http.server 8000
 `main` 브랜치에 푸시하면 `.github/workflows/deploy-pages.yml`이 자동으로
 엔진 테스트를 돌리고 GitHub Pages에 배포합니다. 테스트가 실패하면 배포되지 않습니다.
 
-최초 1회만 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 지정해 주세요.
-(워크플로의 `configure-pages` 단계가 자동 활성화를 시도하지만, 권한에 따라 수동 설정이 필요할 수 있습니다.)
+### 최초 1회 필수 설정
+
+저장소 **Settings → Pages → Source**를 **GitHub Actions**로 지정해야 합니다.
+
+워크플로의 `configure-pages` 단계에 `enablement: true`가 있지만, Actions의 `GITHUB_TOKEN`으로는
+Pages 사이트를 새로 **생성**할 수 없습니다(`Resource not accessible by integration`).
+사이트가 한 번 만들어진 뒤부터는 이 단계가 기존 설정을 읽어오기만 하므로 그대로 통과합니다.
+
+설정 후에는 Actions 탭에서 `Deploy to GitHub Pages` 워크플로를 `Re-run` 하거나
+`main`에 아무 커밋이나 푸시하면 배포됩니다.
 
 ## 주요 기능
 
