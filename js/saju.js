@@ -72,7 +72,7 @@
    * opts: { year, month, day, hour, minute, hourUnknown, solarCorrection }
    * solarCorrection: 한국 표준시 → 실제 태양시 보정(-30분) */
   function computeSaju(opts) {
-    let { year, month, day, hour, minute, hourUnknown, solarCorrection } = opts;
+    let { year, month, day, hour, minute, hourUnknown, solarCorrection, gender } = opts;
     minute = minute || 0;
 
     // 시간 보정 (태양시): -30분
@@ -167,8 +167,18 @@
       hour: hourPillar ? { stem: tenGod(dayP.stem, hourPillar.stem), branch: tenGod(dayP.stem, BRANCH_MAIN_STEM[hourPillar.branch]) } : null,
     };
 
+    // ----- 성별 의존 해석: 대운 · 배우자성 -----
+    const luck = computeLuckCycles(
+      { yearStem, monthStem, monthBranch },
+      { y: year, m: month, d: day },
+      gender
+    );
+    const sinsal = computeSinsal(pillars, dayP.stem, yearBranch, dayP.branch);
+    const spouse = spouseAnalysis(dayP.stem, dayP.branch, pillars, gender);
+
     return {
       year: yearPillar, month: monthPillar, day: dayP, hour: hourPillar,
+      luck, sinsal, spouse, gender: gender || 'X',
       dayMaster: dayP.stem,
       dayMasterName: STEMS[dayP.stem],
       dayMasterHanja: STEM_HANJA[dayP.stem],
@@ -191,6 +201,98 @@
     if (CTRL[de] === oe) return same ? '편재' : '정재';
     if (CTRL[oe] === de) return same ? '편관' : '정관';
     return '';
+  }
+
+  /* ---------- 60갑자 인덱스 역산 ---------- */
+  function ganzhiIndexOf(stem, branch) {
+    for (let i = 0; i < 60; i++) if (i % 10 === stem && i % 12 === branch) return i;
+    return -1;
+  }
+
+  /* ---------- 앞뒤 절기 날짜 ---------- */
+  function prevTermDate(y, m, d) {
+    if (d >= termDay(y, m)) return { y, m, d: termDay(y, m) };
+    const pm = m === 1 ? 12 : m - 1;
+    const py = m === 1 ? y - 1 : y;
+    return { y: py, m: pm, d: termDay(py, pm) };
+  }
+  function nextTermDate(y, m, d) {
+    if (d < termDay(y, m)) return { y, m, d: termDay(y, m) };
+    const nm = m === 12 ? 1 : m + 1;
+    const ny = m === 12 ? y + 1 : y;
+    return { y: ny, m: nm, d: termDay(ny, nm) };
+  }
+
+  /* ---------- 대운(大運) ----------
+   * 양남음녀 순행 / 음남양녀 역행.
+   * 대운수 = 순행이면 다음 절기까지, 역행이면 이전 절기부터의 일수 ÷ 3 */
+  function computeLuckCycles(base, birth, gender) {
+    if (gender !== 'M' && gender !== 'F') return null;
+    const yangYear = base.yearStem % 2 === 0;
+    const forward = yangYear === (gender === 'M');
+
+    const jb = jdn(birth.y, birth.m, birth.d);
+    let days;
+    if (forward) {
+      const t = nextTermDate(birth.y, birth.m, birth.d);
+      days = jdn(t.y, t.m, t.d) - jb;
+    } else {
+      const t = prevTermDate(birth.y, birth.m, birth.d);
+      days = jb - jdn(t.y, t.m, t.d);
+    }
+    const startAge = Math.max(1, Math.round(days / 3));
+
+    const mIdx = ganzhiIndexOf(base.monthStem, base.monthBranch);
+    const list = [];
+    for (let k = 1; k <= 8; k++) {
+      const p = ganzhiOf(mIdx + (forward ? k : -k));
+      list.push(Object.assign({}, p, { from: startAge + (k - 1) * 10, to: startAge + k * 10 - 1 }));
+    }
+    return { forward, direction: forward ? '순행' : '역행', startAge, days, list };
+  }
+
+  /* ---------- 신살(神煞) ---------- */
+  // 삼합국: 인오술=화, 사유축=금, 신자진=수, 해묘미=목
+  const SAMHAP_KEY = { 2: '화', 6: '화', 10: '화', 5: '금', 9: '금', 1: '금', 8: '수', 0: '수', 4: '수', 11: '목', 3: '목', 7: '목' };
+  const SINSAL_TABLE = {
+    화: { 도화: 3, 역마: 8, 화개: 10 },
+    금: { 도화: 6, 역마: 11, 화개: 1 },
+    수: { 도화: 9, 역마: 2, 화개: 4 },
+    목: { 도화: 0, 역마: 5, 화개: 7 },
+  };
+  // 천을귀인: 일간 기준
+  const CHEONEUL = { 0: [1, 7], 4: [1, 7], 6: [1, 7], 1: [0, 8], 5: [0, 8], 2: [11, 9], 3: [11, 9], 8: [5, 3], 9: [5, 3], 7: [2, 6] };
+
+  function computeSinsal(pillars, dayStem, yearBranch, dayBranch) {
+    const branches = pillars.map(p => p.branch);
+    const found = [];
+    [yearBranch, dayBranch].forEach(base => {
+      const t = SINSAL_TABLE[SAMHAP_KEY[base]];
+      if (!t) return;
+      Object.keys(t).forEach(name => {
+        if (branches.includes(t[name]) && found.indexOf(name) === -1) found.push(name);
+      });
+    });
+    const gui = CHEONEUL[dayStem] || [];
+    if (branches.some(b => gui.indexOf(b) !== -1)) found.push('천을귀인');
+    return found;
+  }
+
+  /* ---------- 배우자성 ----------
+   * 남자는 재성(정재·편재)이 아내, 여자는 관성(정관·편관)이 남편을 뜻합니다. */
+  function spouseAnalysis(dayStem, dayBranch, pillars, gender) {
+    if (gender !== 'M' && gender !== 'F') return null;
+    const targets = gender === 'M' ? ['정재', '편재'] : ['정관', '편관'];
+    let count = 0;
+    pillars.forEach(p => {
+      if (targets.indexOf(tenGod(dayStem, p.stem)) !== -1) count++;
+      if (targets.indexOf(tenGod(dayStem, BRANCH_MAIN_STEM[p.branch])) !== -1) count++;
+    });
+    return {
+      starName: gender === 'M' ? '재성(財星)' : '관성(官星)',
+      targets, count,
+      palace: tenGod(dayStem, BRANCH_MAIN_STEM[dayBranch]),
+    };
   }
 
   /* ---------- 지지 관계 ---------- */
@@ -233,7 +335,8 @@
   global.Saju = {
     STEMS, STEM_HANJA, STEM_ELEM, BRANCHES, BRANCH_HANJA, BRANCH_ELEM,
     BRANCH_ANIMAL, ELEMENTS, ELEM_COLOR, GEN_NEXT, CTRL,
-    jdn, termDay, TERM_NAME, ganzhiOf, dayGanzhiIndex,
+    jdn, termDay, TERM_NAME, ganzhiOf, ganzhiIndexOf, dayGanzhiIndex,
+    prevTermDate, nextTermDate, computeLuckCycles, computeSinsal, spouseAnalysis,
     computeSaju, tenGod, branchRelation, hashStr, seededRng, todayGanzhi,
   };
 

@@ -1,5 +1,5 @@
 /* ============================================================
- * app.js — 달빛사주 UI 로직
+ * app.js — 운세 편의점 UI 로직
  * ============================================================ */
 (function () {
   'use strict';
@@ -16,6 +16,14 @@
   // 일간 상징("보석과 칼날 💎")에서 이모지/이름 분리
   const symEmoji = (dm) => dm.symbol.split(' ').pop();
   const symName = (dm) => dm.symbol.split(' ').slice(0, -1).join(' ');
+  // 만 나이
+  function ageOf(p) {
+    const t = new Date();
+    let a = t.getFullYear() - p.year;
+    const bd = new Date(t.getFullYear(), p.month - 1, p.day);
+    if (t < bd) a--;
+    return a;
+  }
 
   /* ==================== 초기화 ==================== */
   function init() {
@@ -62,7 +70,7 @@
     $('#profile-form').addEventListener('submit', (e) => {
       e.preventDefault();
       const p = {
-        name: $('#in-name').value.trim() || '달빛님',
+        name: $('#in-name').value.trim() || '손님',
         year: +$('#in-year').value,
         month: +$('#in-month').value,
         day: +$('#in-day').value,
@@ -142,7 +150,7 @@
 
     $('#tab-home').innerHTML = `
       <div class="section-head">
-        <div class="greeting">${esc(profile.name)}님, 안녕하세요 ${symEmoji(dm) || '🌙'}</div>
+        <div class="greeting">어서 오세요, ${esc(profile.name)}님 ${symEmoji(dm) || '🏪'}</div>
         <div class="date-line">${dateStr} · <span class="iljin-chip">오늘의 일진 ${f.day.name} (${f.day.hanja})</span></div>
       </div>
 
@@ -182,25 +190,25 @@
       <div id="weekly-section"></div>
 
       <div class="card" id="attend-card">
-        <div class="card-title">📅 출석 체크<span class="spacer"></span><span class="muted">매일 +${Store.REWARDS.attendance}냥</span></div>
-        <button class="btn-gold" id="btn-attend">${Store.canAttend(todayKey()) ? '오늘 출석하고 엽전 받기 🪙' : '오늘 출석 완료! 내일 또 만나요 ✅'}</button>
+        <div class="card-title">🔖 출석 도장<span class="spacer"></span><span class="muted">매일 +${Store.REWARDS.attendance}냥</span></div>
+        <button class="btn-gold" id="btn-attend">${Store.canAttend(todayKey()) ? '오늘 도장 찍고 엽전 받기 🪙' : '오늘 도장 완료! 내일 또 오세요 ✅'}</button>
       </div>
     `;
 
     $('#btn-attend').addEventListener('click', () => {
       if (Store.attend(todayKey())) {
-        toast('🪙 출석 완료! 엽전 +' + Store.REWARDS.attendance + '냥');
+        toast('🪙 도장 찍었어요! 엽전 +' + Store.REWARDS.attendance + '냥');
         renderCoins();
-        $('#btn-attend').textContent = '오늘 출석 완료! 내일 또 만나요 ✅';
+        $('#btn-attend').textContent = '오늘 도장 완료! 내일 또 오세요 ✅';
       } else {
-        toast('오늘은 이미 출석했어요 😊');
+        toast('오늘 도장은 이미 찍으셨어요 😊');
       }
     });
 
     renderWeekly();
   }
 
-  /* ---------- 주간 운세 (프리미엄) ---------- */
+  /* ---------- 주간 운세 (유료 상품) ---------- */
   function renderWeekly() {
     const wk = Fortune.weekKey(new Date());
     const unlocked = Store.isWeeklyUnlocked(wk);
@@ -232,9 +240,9 @@
           renderCoins();
           renderWeekly();
         } else {
-          confirmModal('엽전이 부족해요 🥲', `주간 운세는 ${Store.PRICES.weekly}냥이 필요해요.<br/>광고를 보거나 출석 체크로 엽전을 모을 수 있어요.`, [
+          confirmModal('엽전이 부족해요 🥲', `주간 운세는 ${Store.PRICES.weekly}냥이 필요해요.<br/>광고를 보시거나 출석 도장을 찍으면 엽전을 드려요.`, [
             { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-            { label: '상점 가기', fn: () => switchTab('shop') },
+            { label: '계산대 가기', fn: () => switchTab('shop') },
           ]);
         }
       });
@@ -326,15 +334,70 @@
         <p class="muted" style="margin-top:6px;">${SajuData.ELEMENT_DESC[saju.lacking].lack}</p>
       </div>
 
+      ${renderLuckCard()}
+      ${renderSinsalCard()}
+
       <div id="deep-section"></div>
 
       <div class="notice-box">ℹ️ 본 서비스의 사주 계산은 절기 근사식을 사용하며, 절기 경계일(입춘 등) 전후 출생은 실제와 1일 차이가 날 수 있습니다. 해석은 재미와 자기 이해를 위한 참고 자료로 활용해 주세요.</div>
     `;
 
+    const genderBtn = $('#btn-set-gender');
+    if (genderBtn) genderBtn.addEventListener('click', openProfileEditor);
+
     renderDeepReport();
   }
 
-  /* ---------- 심층 리포트 (프리미엄) ---------- */
+  /* ---------- 대운 (성별 기반) ---------- */
+  function renderLuckCard() {
+    if (!saju.luck) {
+      return `
+        <div class="card">
+          <div class="card-title">🌊 대운 (10년 주기 운의 흐름)</div>
+          <p class="fortune-text">대운은 <b>태어난 해의 음양과 성별</b>이 맞물려 방향이 정해집니다.
+          (양남음녀는 순행, 음남양녀는 역행) 성별을 선택하지 않으셔서 계산할 수 없어요.</p>
+          <button class="btn-ghost btn-sm" id="btn-set-gender" style="margin-top:10px;">⚙️ 성별 선택하고 대운 보기</button>
+        </div>`;
+    }
+    const L = saju.luck;
+    const age = ageOf(profile);
+    return `
+      <div class="card">
+        <div class="card-title">🌊 대운 (10년 주기 운의 흐름)<span class="spacer"></span><span class="muted">${L.direction} · 대운수 ${L.startAge}</span></div>
+        <p class="fortune-text" style="margin-bottom:12px;">${SajuData.LUCK_INTRO[L.direction]}</p>
+        ${L.list.map(d => {
+          const now = age >= d.from && age <= d.to;
+          const god = Saju.tenGod(saju.dayMaster, d.stem);
+          return `
+          <div class="week-row" ${now ? 'style="background:rgba(139,111,240,0.12);border-radius:10px;padding-left:8px;padding-right:8px;"' : ''}>
+            <div class="week-day">${d.from}~${d.to}세${now ? '<small style="color:var(--gold)">지금 이 대운</small>' : ''}</div>
+            <div class="week-head"><b style="color:var(--text)">${d.hanja} ${d.name}</b> · ${god}</div>
+            <div class="week-score" style="font-size:12px;">${d.stemElem}${d.branchElem}</div>
+          </div>`;
+        }).join('')}
+        <p class="muted" style="margin-top:10px;">💡 대운은 10년마다 인생의 배경 음악이 바뀌는 것과 같아요. 지금 대운의 십신이 요즘 나에게 강하게 작동하는 에너지입니다.</p>
+      </div>`;
+  }
+
+  /* ---------- 신살 ---------- */
+  function renderSinsalCard() {
+    if (!saju.sinsal.length) return '';
+    return `
+      <div class="card">
+        <div class="card-title">✨ 내 사주의 신살(神煞)</div>
+        ${saju.sinsal.map(n => {
+          const s = SajuData.SINSAL_DESC[n];
+          return `
+          <div style="margin-bottom:14px;">
+            <div style="font-weight:800;font-size:15px;">${s.emoji} ${s.title}</div>
+            <p class="fortune-text" style="margin-top:4px;">${s.desc}</p>
+            <div class="tarot-advice" style="margin-top:8px;">💡 ${s.tip}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  /* ---------- 심층 리포트 (유료 상품) ---------- */
   function renderDeepReport() {
     const sig = profileSig(profile);
     const unlocked = Store.isDeepUnlocked(sig);
@@ -361,9 +424,9 @@
           renderCoins();
           renderDeepReport();
         } else {
-          confirmModal('엽전이 부족해요 🥲', `심층 리포트는 ${Store.PRICES.deepReport}냥이 필요해요.<br/>광고 시청과 출석 체크로 엽전을 모아 보세요.`, [
+          confirmModal('엽전이 부족해요 🥲', `심층 리포트는 ${Store.PRICES.deepReport}냥이 필요해요.<br/>광고 시청과 출석 도장으로 엽전을 모아 보세요.`, [
             { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-            { label: '상점 가기', fn: () => switchTab('shop') },
+            { label: '계산대 가기', fn: () => switchTab('shop') },
           ]);
         }
       });
@@ -402,11 +465,59 @@
         <div class="card-title">💕 연애·인연 풀이</div>
         <p class="fortune-text">${dm.love}</p>
         <p class="muted" style="margin-top:6px;">일지(배우자궁)에 <b>${g.day.branch}</b>의 기운이 자리해, ${SajuData.TEN_GOD_DESC[g.day.branch] ? SajuData.TEN_GOD_DESC[g.day.branch].short + '의 인연이 배우자 자리에서 작동합니다.' : '인연의 기운이 흐릅니다.'}</p>
+        ${renderSpouseBlock()}
 
         <div class="divider"></div>
-        <div class="card-title">🧭 달빛 조언</div>
+        <div class="card-title">📆 ${new Date().getFullYear()}년 세운 · 지금의 대운</div>
+        ${renderYearlyBlock()}
+
+        <div class="divider"></div>
+        <div class="card-title">🧭 점장님 한마디</div>
         <p class="fortune-text">${dm.caution} ${SajuData.ELEMENT_DESC[saju.lacking].lack}</p>
       </div>`;
+  }
+
+  /* ---------- 배우자성 블록 (성별 기반) ---------- */
+  function renderSpouseBlock() {
+    const sp = saju.spouse;
+    if (!sp) return `<p class="muted" style="margin-top:6px;">⚙️ 성별을 선택하시면 배우자성(남자는 재성, 여자는 관성) 해석을 함께 보여드려요.</p>`;
+    const D = SajuData.SPOUSE_DESC[saju.gender];
+    const body = sp.count >= 3 ? D.many : sp.count === 0 ? D.none : D.one;
+    return `
+      <div class="rel-comment" style="margin-top:10px;">
+        ${D.intro} 당신의 사주에는 ${D.star}이 <b>${sp.count}개</b> 있습니다.<br/><br/>${body}
+      </div>`;
+  }
+
+  /* ---------- 올해 세운 + 현재 대운 ---------- */
+  function renderYearlyBlock() {
+    const y = new Date().getFullYear();
+    // 세운: 해당 연도의 년간지
+    const stem = ((y - 4) % 10 + 10) % 10;
+    const branch = ((y - 4) % 12 + 12) % 12;
+    const god = Saju.tenGod(saju.dayMaster, stem);
+    const gd = SajuData.TEN_GOD_DESC[god];
+    const name = Saju.STEMS[stem] + Saju.BRANCHES[branch];
+    const hanja = Saju.STEM_HANJA[stem] + Saju.BRANCH_HANJA[branch];
+    const rel = Saju.branchRelation(saju.day.branch, branch);
+    const relTxt = SajuData.RELATION_COMMENT[rel];
+
+    let cur = '';
+    if (saju.luck) {
+      const age = ageOf(profile);
+      const d = saju.luck.list.find(x => age >= x.from && age <= x.to);
+      if (d) {
+        const lg = Saju.tenGod(saju.dayMaster, d.stem);
+        const lgd = SajuData.TEN_GOD_DESC[lg];
+        cur = `<p class="fortune-text" style="margin-top:10px;">지금은 <b>${d.hanja} ${d.name} 대운</b>(${d.from}~${d.to}세) 한가운데입니다. ${lgd ? lgd.short + ' — ' + lgd.desc : ''}</p>`;
+      }
+    }
+
+    return `
+      <p class="fortune-text">${y}년은 <b>${hanja} ${name}년</b>, 당신의 일간에게는 <b>${god}</b>의 해입니다.
+      ${gd ? gd.short + ' — ' + gd.desc : ''}</p>
+      ${relTxt ? `<div class="rel-comment" style="margin-top:10px;">✨ ${relTxt}</div>` : ''}
+      ${cur}`;
   }
 
   /* ==================== 타로 ==================== */
@@ -422,7 +533,7 @@
       <div class="card">
         <div class="tarot-stage" id="tarot-stage"></div>
       </div>
-      <div class="notice-box">🃏 매일 자정이 지나면 새로운 카드를 무료로 뽑을 수 있어요. 카드는 나의 생년월일과 날짜의 기운으로 정해집니다.</div>
+      <div class="notice-box">🃏 매일 자정이 지나면 새 카드가 입고돼요. 하루 한 장은 무료로 뽑으실 수 있습니다. 카드는 나의 생년월일과 날짜의 기운으로 정해집니다.</div>
     `;
 
     const stage = $('#tarot-stage');
@@ -453,7 +564,7 @@
       if (!Store.payTarotExtra()) {
         confirmModal('엽전이 부족해요 🥲', `추가 뽑기는 ${Store.PRICES.tarotExtra}냥이 필요해요.`, [
           { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
-          { label: '상점 가기', fn: () => switchTab('shop') },
+          { label: '계산대 가기', fn: () => switchTab('shop') },
         ]);
         return;
       }
@@ -540,8 +651,8 @@
 
     wrap.innerHTML = `
       <div class="section-head">
-        <h2>🛍️ 엽전 상점</h2>
-        <p>엽전으로 주간 운세, 심층 풀이, 타로 추가 뽑기를 열 수 있어요.</p>
+        <h2>🛒 계산대</h2>
+        <p>저희 가게는 엽전으로 계산합니다. 광고를 보시거나 매일 도장을 찍으면 엽전을 드려요.</p>
       </div>
 
       <div class="card">
@@ -550,25 +661,25 @@
           📺 광고 보고 +${Store.REWARDS.ad}냥 받기 (오늘 ${adCnt}/${Store.AD_DAILY_LIMIT})
         </button>
         <div style="height:8px;"></div>
-        <button class="btn-ghost" id="btn-shop-attend">📅 출석 체크 +${Store.REWARDS.attendance}냥</button>
+        <button class="btn-ghost" id="btn-shop-attend">🔖 출석 도장 찍고 +${Store.REWARDS.attendance}냥</button>
       </div>
 
       <div class="card">
         <div class="card-title">🪙 엽전 충전<span class="spacer"></span><span class="muted">결제 준비 중</span></div>
         ${Store.IAP_PACKAGES.map(p => `
           <div class="shop-item">
-            <div class="shop-ico">${p.sub ? '🌙' : '🪙'}</div>
+            <div class="shop-ico">${p.sub ? '🎟️' : '🪙'}</div>
             <div class="shop-info">
-              <div class="shop-name">${p.sub ? '달빛 프리미엄 구독' : '엽전 ' + p.coins + '냥'}</div>
+              <div class="shop-name">${p.sub ? '운세 편의점 정기권' : '엽전 ' + p.coins + '냥'}</div>
               <div class="shop-desc">${p.bonus || '기본 패키지'}</div>
             </div>
             <button class="btn-ghost btn-sm" data-pkg="${p.id}">${p.price}</button>
           </div>`).join('')}
-        <p class="muted" style="margin-top:10px;">💳 결제 기능은 현재 준비 중이에요. 지금은 광고 시청과 출석으로 엽전을 모을 수 있습니다.</p>
+        <p class="muted" style="margin-top:10px;">💳 결제 기능은 현재 준비 중이에요. 지금은 광고 시청과 출석 도장으로 엽전을 모으실 수 있어요.</p>
       </div>
 
       <div class="card">
-        <div class="card-title">✨ 엽전 사용처</div>
+        <div class="card-title">🧾 오늘의 진열대</div>
         <div class="shop-item"><div class="shop-ico">🗓️</div><div class="shop-info"><div class="shop-name">주간 운세</div><div class="shop-desc">7일간의 흐름 + BEST/주의 날짜</div></div><div class="shop-price">${Store.PRICES.weekly}냥/주</div></div>
         <div class="shop-item"><div class="shop-ico">🔮</div><div class="shop-info"><div class="shop-name">심층 사주 리포트</div><div class="shop-desc">십신·직업·연애 풀이 (영구 소장)</div></div><div class="shop-price">${Store.PRICES.deepReport}냥</div></div>
         <div class="shop-item"><div class="shop-ico">🎴</div><div class="shop-info"><div class="shop-name">타로 추가 뽑기</div><div class="shop-desc">하루 1장 무료 이후 추가 뽑기</div></div><div class="shop-price">${Store.PRICES.tarotExtra}냥/장</div></div>
@@ -578,11 +689,11 @@
     $('#btn-shop-ad').addEventListener('click', watchAd);
     $('#btn-shop-attend').addEventListener('click', () => {
       if (Store.attend(todayKey())) {
-        toast('🪙 출석 완료! 엽전 +' + Store.REWARDS.attendance + '냥');
+        toast('🪙 도장 찍었어요! 엽전 +' + Store.REWARDS.attendance + '냥');
         renderCoins();
         renderHome();
       } else {
-        toast('오늘은 이미 출석했어요 😊');
+        toast('오늘 도장은 이미 찍으셨어요 😊');
       }
     });
     wrap.querySelectorAll('[data-pkg]').forEach(btn => {
