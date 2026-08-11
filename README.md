@@ -3,6 +3,8 @@
 사주팔자 · 오늘의 운세 · 일일 타로 · MBTI 결합 해석을 담은 웹 앱입니다.
 빌드 도구 없이 순수 HTML/CSS/JS로 만들어져 어디서든 바로 실행됩니다.
 
+**🔗 배포 주소: https://gnuinu.github.io/saju/**
+
 ## 실행 방법
 
 ```bash
@@ -12,7 +14,14 @@ python3 -m http.server 8000
 ```
 
 `index.html`을 브라우저에서 직접 열어도 동작합니다.
-GitHub Pages에 올리면 그대로 서비스됩니다 (Settings → Pages → 브랜치 선택).
+
+## 배포
+
+`main` 브랜치에 푸시하면 `.github/workflows/deploy-pages.yml`이 자동으로
+엔진 테스트를 돌리고 GitHub Pages에 배포합니다. 테스트가 실패하면 배포되지 않습니다.
+
+최초 1회만 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 지정해 주세요.
+(워크플로의 `configure-pages` 단계가 자동 활성화를 시도하지만, 권한에 따라 수동 설정이 필요할 수 있습니다.)
 
 ## 주요 기능
 
