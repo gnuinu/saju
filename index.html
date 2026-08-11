@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="달빛사주 — 사주팔자·오늘의 운세·일일 타로·MBTI 결합 해석" />
+  <title>달빛사주 🌙 — 나의 사주와 오늘의 운세</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌙</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== 상단 바 ===== -->
+    <header class="topbar">
+      <div class="brand">🌙 달빛사주</div>
+      <div class="topbar-right">
+        <button id="coin-badge" class="coin-badge" title="엽전 상점으로 이동">🪙 <span id="coin-amount">0</span></button>
+        <button id="btn-settings" class="icon-btn" title="프로필 수정">⚙️</button>
+      </div>
+    </header>
+
+    <!-- ===== 온보딩 (프로필 입력) ===== -->
+    <section id="onboarding" class="onboarding hidden">
+      <div class="onboard-card">
+        <h1 class="onboard-title">🌙 달빛사주</h1>
+        <p class="onboard-sub">생년월일을 알려 주시면<br/>당신만의 사주풀이와 오늘의 운세를 준비할게요.</p>
+
+        <form id="profile-form">
+          <label class="field">
+            <span>이름 (또는 별명)</span>
+            <input type="text" id="in-name" maxlength="12" placeholder="예: 달빛토끼" required />
+          </label>
+
+          <label class="field">
+            <span>생년월일 <small>(양력 기준)</small></span>
+            <div class="row3">
+              <select id="in-year" required></select>
+              <select id="in-month" required></select>
+              <select id="in-day" required></select>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>태어난 시간</span>
+            <div class="row2">
+              <select id="in-hour"></select>
+              <select id="in-minute"></select>
+            </div>
+            <label class="check-line"><input type="checkbox" id="in-hour-unknown" /> 태어난 시간을 몰라요</label>
+            <label class="check-line"><input type="checkbox" id="in-solar-corr" checked /> 한국에서 태어났어요 (태양시 −30분 보정)</label>
+          </label>
+
+          <label class="field">
+            <span>성별</span>
+            <div class="seg" id="in-gender">
+              <button type="button" data-v="F" class="seg-btn active">여성</button>
+              <button type="button" data-v="M" class="seg-btn">남성</button>
+              <button type="button" data-v="X" class="seg-btn">선택 안 함</button>
+            </div>
+          </label>
+
+          <label class="field">
+            <span>MBTI <small>(선택)</small></span>
+            <select id="in-mbti"><option value="">모르거나 나중에 할게요</option></select>
+          </label>
+
+          <button type="submit" class="btn-primary btn-big">내 사주 보러 가기 ✨</button>
+          <p class="onboard-note">입력한 정보는 이 기기(브라우저)에만 저장됩니다.</p>
+        </form>
+      </div>
+    </section>
+
+    <!-- ===== 메인 ===== -->
+    <main id="main" class="hidden">
+
+      <!-- 홈: 오늘의 운세 -->
+      <section id="tab-home" class="tab active"></section>
+
+      <!-- 내 사주 -->
+      <section id="tab-saju" class="tab"></section>
+
+      <!-- 타로 -->
+      <section id="tab-tarot" class="tab"></section>
+
+      <!-- MBTI -->
+      <section id="tab-mbti" class="tab"></section>
+
+      <!-- 상점 -->
+      <section id="tab-shop" class="tab"></section>
+    </main>
+
+    <!-- ===== 하단 네비게이션 ===== -->
+    <nav id="bottom-nav" class="bottom-nav hidden">
+      <button data-tab="home" class="nav-btn active"><span class="nav-ico">🏠</span>오늘</button>
+      <button data-tab="saju" class="nav-btn"><span class="nav-ico">📜</span>내 사주</button>
+      <button data-tab="tarot" class="nav-btn"><span class="nav-ico">🎴</span>타로</button>
+      <button data-tab="mbti" class="nav-btn"><span class="nav-ico">🧩</span>MBTI</button>
+      <button data-tab="shop" class="nav-btn"><span class="nav-ico">🛍️</span>상점</button>
+    </nav>
+
+    <!-- ===== 광고 플레이스홀더 모달 ===== -->
+    <div id="ad-modal" class="modal hidden">
+      <div class="modal-card ad-card">
+        <div class="ad-screen">
+          <div class="ad-label">AD</div>
+          <p class="ad-text">광고가 여기에 표시됩니다<br/><small>(광고 SDK 연동 예정 자리)</small></p>
+          <div class="ad-count" id="ad-countdown">5</div>
+        </div>
+        <button id="ad-skip" class="btn-ghost" disabled>광고 시청 중...</button>
+      </div>
+    </div>
+
+    <!-- ===== 범용 모달 ===== -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-card" id="modal-content"></div>
+    </div>
+
+    <!-- ===== 토스트 ===== -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="js/saju.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/tarot.js"></script>
+  <script src="js/mbti.js"></script>
+  <script src="js/fortune.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
