@@ -17,6 +17,7 @@
     weekly: 10,      // 주간 운세 (주 단위 잠금 해제)
     deepReport: 20,  // 심층 사주 리포트 (영구 해제)
     tarotExtra: 5,   // 타로 추가 뽑기
+    match: 30,       // 궁합 상세 풀이 (상대별 영구 해제)
   };
 
   const REWARDS = {
@@ -119,6 +120,23 @@
     return true;
   }
 
+  // 궁합 상세 풀이 (상대 한 명당 영구 해제)
+  function isMatchUnlocked(sig) {
+    const list = getState().matchSigs || [];
+    return list.indexOf(sig) !== -1;
+  }
+  function unlockMatch(sig) {
+    if (isMatchUnlocked(sig)) return true;
+    if (!spendCoins(PRICES.match)) return false;
+    const list = getState().matchSigs || [];
+    list.push(sig);
+    setState({ matchSigs: list });
+    return true;
+  }
+  // 마지막으로 본 상대 (다시 열었을 때 이어 보기)
+  function getLastPartner() { return getState().lastPartner || null; }
+  function saveLastPartner(p) { setState({ lastPartner: p }); }
+
   // 타로: 무료 1장/일 + 추가 뽑기
   function tarotDrawsToday(todayKey) {
     const s = getState();
@@ -161,6 +179,7 @@
     adCountToday, canWatchAd, recordAdWatch,
     isWeeklyUnlocked, unlockWeekly,
     isDeepUnlocked, unlockDeep,
+    isMatchUnlocked, unlockMatch, getLastPartner, saveLastPartner,
     tarotDrawsToday, recordTarotDraw, payTarotExtra,
     showRewardedAd, purchasePackage,
   };

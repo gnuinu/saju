@@ -186,6 +186,7 @@
     renderHome();
     renderSaju();
     renderTarot();
+    renderMatch();
     renderMbti();
     renderShop();
   }
@@ -738,6 +739,256 @@
     $('#btn-tarot-extra').addEventListener('click', () => drawTarot(true));
   }
 
+  /* ==================== 궁합 ==================== */
+  let partner = null;       // 상대방 프로필
+  let partnerSaju = null;
+
+  const partnerSig = (p) => ['M', p.year, p.month, p.day, p.hourUnknown ? 'x' : p.hour + ':' + p.minute, p.gender].join('|');
+
+  function renderMatch() {
+    partner = Store.getLastPartner();
+    partnerSaju = partner ? Saju.computeSaju(partner) : null;
+
+    const nowY = new Date().getFullYear();
+    const years = [];
+    for (let y = nowY; y >= 1930; y--) years.push(y);
+
+    $('#tab-match').innerHTML = `
+      <div class="section-head">
+        <h2>💞 궁합 보기</h2>
+        <p>상대방의 생년월일을 넣으면 두 사주를 견주어 봐 드려요.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">상대방 정보</div>
+        <label class="field">
+          <span>이름 (또는 별명)</span>
+          <input type="text" id="p-name" maxlength="12" placeholder="예: 그 사람" value="${partner ? esc(partner.name) : ''}" />
+        </label>
+        <label class="field">
+          <span>생년월일</span>
+          <div class="seg" id="p-caltype">
+            <button type="button" data-v="solar" class="seg-btn ${partner && partner.calendar === 'lunar' ? '' : 'active'}">양력</button>
+            <button type="button" data-v="lunar" class="seg-btn ${partner && partner.calendar === 'lunar' ? 'active' : ''}">음력</button>
+          </div>
+          <div class="row3" style="margin-top:8px;">
+            <select id="p-year">${years.map(y => `<option value="${y}">${y}년</option>`).join('')}</select>
+            <select id="p-month">${[...Array(12)].map((_, i) => `<option value="${i + 1}">${i + 1}월</option>`).join('')}</select>
+            <select id="p-day"></select>
+          </div>
+          <label class="check-line hidden" id="p-leap-line">
+            <input type="checkbox" id="p-leap" /> 윤달이에요 <span id="p-leap-hint"></span>
+          </label>
+          <p class="cal-preview" id="p-preview"></p>
+        </label>
+        <label class="field">
+          <span>태어난 시간 <small>(모르면 넘어가도 돼요)</small></span>
+          <div class="row2">
+            <select id="p-hour">${[...Array(24)].map((_, i) => `<option value="${i}">${String(i).padStart(2, '0')}시</option>`).join('')}</select>
+            <select id="p-minute">${[...Array(12)].map((_, i) => `<option value="${i * 5}">${String(i * 5).padStart(2, '0')}분</option>`).join('')}</select>
+          </div>
+          <label class="check-line"><input type="checkbox" id="p-hour-unknown" /> 태어난 시간을 몰라요</label>
+        </label>
+        <label class="field">
+          <span>성별</span>
+          <div class="seg" id="p-gender">
+            <button type="button" data-v="F" class="seg-btn active">여성</button>
+            <button type="button" data-v="M" class="seg-btn">남성</button>
+            <button type="button" data-v="X" class="seg-btn">선택 안 함</button>
+          </div>
+        </label>
+        <button class="btn-primary" id="btn-match-go">💞 궁합 보기</button>
+      </div>
+
+      <div id="match-result"></div>
+    `;
+
+    // 저장된 상대 값 되살리기
+    if (partner) {
+      const lu = partner.calendar === 'lunar' && partner.lunarInput;
+      $('#p-year').value = lu ? partner.lunarInput.year : partner.year;
+      $('#p-month').value = lu ? partner.lunarInput.month : partner.month;
+      $('#p-leap').checked = lu ? !!partner.lunarInput.isLeap : false;
+      updatePartnerCalendar();
+      $('#p-day').value = lu ? partner.lunarInput.day : partner.day;
+      $('#p-hour').value = partner.hour;
+      $('#p-minute').value = partner.minute;
+      $('#p-hour-unknown').checked = partner.hourUnknown;
+      $('#p-hour').disabled = partner.hourUnknown;
+      $('#p-minute').disabled = partner.hourUnknown;
+      $$('#p-gender .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.v === partner.gender));
+    }
+    updatePartnerCalendar();
+
+    $('#p-caltype').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('seg-btn')) return;
+      $$('#p-caltype .seg-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      updatePartnerCalendar();
+    });
+    $('#p-gender').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('seg-btn')) return;
+      $$('#p-gender .seg-btn').forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+    });
+    ['#p-year', '#p-month', '#p-day', '#p-leap'].forEach(s => $(s).addEventListener('change', updatePartnerCalendar));
+    $('#p-hour-unknown').addEventListener('change', (e) => {
+      $('#p-hour').disabled = e.target.checked;
+      $('#p-minute').disabled = e.target.checked;
+    });
+    $('#btn-match-go').addEventListener('click', runMatch);
+
+    if (partner) renderMatchResult();
+  }
+
+  function partnerCalType() { return $('#p-caltype .seg-btn.active').dataset.v; }
+
+  function updatePartnerCalendar() {
+    const sel = $('#p-day'), keep = +sel.value || 1;
+    const y = +$('#p-year').value, m = +$('#p-month').value;
+    const leapLine = $('#p-leap-line'), preview = $('#p-preview');
+
+    if (partnerCalType() === 'solar') {
+      leapLine.classList.add('hidden');
+      $('#p-leap').checked = false;
+      sel.innerHTML = '';
+      for (let d = 1; d <= 31; d++) sel.add(new Option(d + '일', d));
+      sel.value = Math.min(keep, 31);
+      preview.textContent = '';
+      return;
+    }
+    const leapM = Lunar.leapMonthOf(y);
+    if (leapM === m) {
+      leapLine.classList.remove('hidden');
+      $('#p-leap-hint').innerHTML = `<span class="muted">— ${y}년에는 윤${leapM}월이 있어요</span>`;
+    } else {
+      leapLine.classList.add('hidden');
+      $('#p-leap').checked = false;
+    }
+    const isLeap = $('#p-leap').checked;
+    const days = Lunar.daysInLunarMonth(y, m, isLeap) || 30;
+    sel.innerHTML = '';
+    for (let d = 1; d <= days; d++) sel.add(new Option(d + '일', d));
+    sel.value = Math.min(keep, days);
+    const s = Lunar.lunarToSolar(y, m, isLeap, +sel.value);
+    preview.innerHTML = s ? `📅 양력으로는 <b>${s.year}년 ${s.month}월 ${s.day}일</b>이에요` : '';
+  }
+
+  function runMatch() {
+    const inY = +$('#p-year').value, inM = +$('#p-month').value, inD = +$('#p-day').value;
+    const isLunar = partnerCalType() === 'lunar';
+    const isLeap = isLunar && $('#p-leap').checked;
+
+    let sy = inY, sm = inM, sd = inD;
+    if (isLunar) {
+      const s = Lunar.lunarToSolar(inY, inM, isLeap, inD);
+      if (!s) { toast(`음력 ${inY}년 ${isLeap ? '윤' : ''}${inM}월 ${inD}일은 없는 날짜예요 🙏`); return; }
+      sy = s.year; sm = s.month; sd = s.day;
+    }
+    const dt = new Date(sy, sm - 1, sd);
+    if (dt.getMonth() + 1 !== sm || dt.getDate() !== sd) { toast('존재하지 않는 날짜예요 🙏'); return; }
+
+    partner = {
+      name: $('#p-name').value.trim() || '상대방',
+      year: sy, month: sm, day: sd,
+      calendar: isLunar ? 'lunar' : 'solar',
+      lunarInput: isLunar ? { year: inY, month: inM, day: inD, isLeap: isLeap } : null,
+      hour: +$('#p-hour').value,
+      minute: +$('#p-minute').value,
+      hourUnknown: $('#p-hour-unknown').checked,
+      solarCorrection: true,
+      gender: $('#p-gender .seg-btn.active').dataset.v,
+    };
+    Store.saveLastPartner(partner);
+    partnerSaju = Saju.computeSaju(partner);
+    renderMatchResult();
+    setTimeout(() => $('#match-result').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+  }
+
+  function renderMatchResult() {
+    const r = Match.compat(saju, partnerSaju);
+    const sig = partnerSig(partner);
+    const unlocked = Store.isMatchUnlocked(sig);
+    const pdm = SajuData.DAY_MASTER[partnerSaju.dayMasterName];
+
+    $('#match-result').innerHTML = `
+      <div class="card">
+        <div class="match-head">
+          <div class="match-person">
+            <div class="mp-emoji">${symEmoji(SajuData.DAY_MASTER[saju.dayMasterName])}</div>
+            <div class="mp-name">${esc(profile.name)}</div>
+            <div class="mp-sub">${saju.dayMasterName}${saju.dayMasterElem} · ${saju.zodiac}띠</div>
+          </div>
+          <div class="match-heart">${r.verdictEmoji}</div>
+          <div class="match-person">
+            <div class="mp-emoji">${symEmoji(pdm)}</div>
+            <div class="mp-name">${esc(partner.name)}</div>
+            <div class="mp-sub">${partnerSaju.dayMasterName}${partnerSaju.dayMasterElem} · ${partnerSaju.zodiac}띠</div>
+          </div>
+        </div>
+        <div class="score-hero" style="padding-top:4px;">
+          <div class="score-num">${r.total}<small> 점</small></div>
+          <div class="headline">「 ${r.verdict} 」</div>
+        </div>
+        ${r.categories.map(c => `
+          <div class="cat-row">
+            <div class="cat-name">${c.emoji} ${c.name}</div>
+            <div class="cat-bar-wrap"><div class="cat-bar" style="width:${(c.score / c.max) * 100}%"></div></div>
+            <div class="cat-score">${c.score}/${c.max}</div>
+          </div>`).join('')}
+      </div>
+
+      ${unlocked ? `
+      <div class="card">
+        <div class="card-title">🔍 항목별 자세히 보기</div>
+        ${r.categories.map(c => `
+          <div style="margin-bottom:16px;">
+            <div style="font-weight:800;font-size:14.5px;">${c.emoji} ${c.name} <span class="muted">${c.score}/${c.max}점</span></div>
+            <div style="color:var(--gold);font-size:13px;font-weight:700;margin:3px 0 5px;">${c.label}</div>
+            <p class="fortune-text">${c.desc}</p>
+          </div>`).join('')}
+        <div class="divider"></div>
+        <div class="card-title">🧭 두 분께 드리는 조언</div>
+        <p class="fortune-text">${r.advice}</p>
+        <div class="tarot-advice" style="margin-top:10px;">
+          💡 일지 <b>${term(r.branchPair)}</b> · 일간 <b>${term(r.stemPair)}</b> · 띠 <b>${term(r.zodiacPair)}</b>
+        </div>
+      </div>` : `
+      <div class="card lock-card">
+        <div class="lock-blur">
+          <div class="card-title">🔍 항목별 자세히 보기</div>
+          <p class="fortune-text">두 사람의 배우자궁이 삼합으로 묶여 있습니다. 궁합에서 가장 좋게 보는 조합 중 하나로, 말하지 않아도 통하는 구석이 있고…</p>
+          <p class="fortune-text">두 일간이 상생 관계라 한 사람이 다른 사람의 기운을…</p>
+        </div>
+        <div class="lock-overlay">
+          <div class="lock-ico">💞</div>
+          <div class="lock-msg">네 항목의 자세한 풀이와 조언</div>
+          <div class="lock-sub">한 번 열면 이 상대는 계속 볼 수 있어요</div>
+          <button class="btn-gold btn-sm" id="btn-unlock-match">🪙 ${Store.PRICES.match}냥으로 열어보기</button>
+          <button class="btn-ghost btn-sm" id="btn-match-ad">광고 보고 엽전 모으기 (+${Store.REWARDS.ad}냥)</button>
+        </div>
+      </div>`}
+
+      <div class="notice-box">💡 궁합은 두 사람의 타고난 기질이 어떻게 만나는지를 보는 참고 자료예요. 점수가 낮다고 안 될 인연은 없고, 높다고 저절로 되는 인연도 없습니다.</div>
+    `;
+
+    if (!unlocked) {
+      $('#btn-unlock-match').addEventListener('click', () => {
+        if (Store.unlockMatch(sig)) {
+          toast('💞 궁합 풀이가 열렸어요!');
+          renderCoins();
+          renderMatchResult();
+        } else {
+          confirmModal('엽전이 부족해요 🥲', `궁합 상세 풀이는 ${Store.PRICES.match}냥이 필요해요.`, [
+            { label: '광고 보고 +' + Store.REWARDS.ad + '냥', gold: true, fn: watchAd },
+            { label: '계산대 가기', fn: () => switchTab('shop') },
+          ]);
+        }
+      });
+      $('#btn-match-ad').addEventListener('click', watchAd);
+    }
+  }
+
   /* ==================== MBTI × 사주 ==================== */
   function renderMbti() {
     const wrap = $('#tab-mbti');
@@ -825,6 +1076,7 @@
         <div class="shop-item"><div class="shop-ico">🗓️</div><div class="shop-info"><div class="shop-name">주간 운세</div><div class="shop-desc">7일간의 흐름 + BEST/주의 날짜</div></div><div class="shop-price">${Store.PRICES.weekly}냥/주</div></div>
         <div class="shop-item"><div class="shop-ico">🔮</div><div class="shop-info"><div class="shop-name">심층 사주 리포트</div><div class="shop-desc">십신·직업·연애 풀이 (영구 소장)</div></div><div class="shop-price">${Store.PRICES.deepReport}냥</div></div>
         <div class="shop-item"><div class="shop-ico">🎴</div><div class="shop-info"><div class="shop-name">타로 추가 뽑기</div><div class="shop-desc">하루 1장 무료 이후 추가 뽑기</div></div><div class="shop-price">${Store.PRICES.tarotExtra}냥/장</div></div>
+        <div class="shop-item"><div class="shop-ico">💞</div><div class="shop-info"><div class="shop-name">궁합 상세 풀이</div><div class="shop-desc">네 항목 해설 + 조언 (상대별 영구)</div></div><div class="shop-price">${Store.PRICES.match}냥</div></div>
       </div>
     `;
 

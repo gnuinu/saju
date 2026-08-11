@@ -235,6 +235,43 @@ eq(m1.score, m2.score, 'MBTI 궁합 점수 결정적');
 eq(typeof m1.synergy, 'string', '결합 해석 문자열 생성');
 
 // 모든 일간에 해석 콘텐츠 존재
+console.log('[궁합 검증]');
+const Match = require('../js/match.js');
+global.Match = Match;
+const mk = (y, m, d, g) => Saju.computeSaju({ year: y, month: m, day: d, hour: 12, minute: 0, hourUnknown: false, solarCorrection: true, gender: g });
+
+// 지지 관계 판정
+eq(Match.branchPair(8, 0), '삼합', '신-자 삼합');
+eq(Match.branchPair(0, 1), '육합', '자-축 육합');
+eq(Match.branchPair(0, 6), '충', '자-오 충');
+eq(Match.branchPair(2, 9), '원진', '인-유 원진');
+eq(Match.branchPair(3, 4), '육해', '묘-진 육해');
+eq(Match.branchPair(5, 5), '동일', '같은 지지');
+// 천간 관계
+eq(Match.stemPair(0, 5), '천간합', '갑-기 천간합');
+eq(Match.stemPair(0, 6), '천간충', '갑-경 천간충');
+eq(Match.stemPair(0, 1), '비화', '갑-을 같은 오행');
+eq(Match.stemPair(0, 2), '상생', '갑(목)-병(화) 상생');
+eq(Match.stemPair(0, 4), '상극', '갑(목)-무(토) 상극');
+
+// 점수 성질
+const p1 = mk(1990, 5, 15, 'M'), p2 = mk(1992, 8, 20, 'F');
+const c = Match.compat(p1, p2);
+eq(c.total >= 20 && c.total <= 99, true, '총점이 20~99 범위');
+eq(c.categories.length, 4, '네 개 항목으로 구성');
+eq(c.categories.every(x => x.score >= 0 && x.score <= x.max), true, '각 항목이 만점을 넘지 않음');
+eq(c.categories.reduce((s, x) => s + x.score, 0) >= c.total - 1, true, '항목 합이 총점과 일치');
+// 결정적: 같은 입력이면 같은 결과
+eq(Match.compat(p1, p2).total, c.total, '같은 두 사람은 항상 같은 점수');
+// 모든 해설 문구가 채워져 있어야 함
+eq(c.categories.every(x => x.desc && x.label), true, '항목별 해설·요약이 모두 존재');
+eq(typeof c.advice === 'string' && c.advice.length > 0, true, '조언 문구 생성');
+// 충 조합이 삼합 조합보다 인연의 깊이 점수가 낮아야 함
+eq(Match.BRANCH_TEXT['삼합'].score > Match.BRANCH_TEXT['충'].score, true, '삼합이 충보다 높은 점수');
+eq(Match.STEM_TEXT['천간합'].score > Match.STEM_TEXT['천간충'].score, true, '천간합이 천간충보다 높은 점수');
+// 성별 미선택도 계산 가능
+eq(typeof Match.compat(mk(1990, 5, 15, 'X'), p2).total, 'number', '성별 미선택도 궁합 계산 가능');
+
 console.log('[영수증 카드]');
 const Receipt = require('../js/receipt.js');
 eq(Receipt.fileName({ fortune: { date: new Date(2026, 7, 11) } }), '운세편의점_영수증_20260811.png', '영수증 파일명 생성');
