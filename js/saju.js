@@ -303,9 +303,23 @@
     const sinsal = computeSinsal(pillars, dayP.stem, yearBranch, dayP.branch);
     const spouse = spouseAnalysis(dayP.stem, dayP.branch, pillars, gender);
 
+    // ----- 12운성 · 공망 -----
+    const lifeStages = {
+      year: lifeStage(dayP.stem, yearPillar.branch),
+      month: lifeStage(dayP.stem, monthPillar.branch),
+      day: lifeStage(dayP.stem, dayP.branch),
+      hour: hourPillar ? lifeStage(dayP.stem, hourPillar.branch) : null,
+    };
+    const voids = voidBranches(dayP.index);
+    const voidPillars = [];
+    if (voids.indexOf(yearPillar.branch) !== -1) voidPillars.push('년주');
+    if (voids.indexOf(monthPillar.branch) !== -1) voidPillars.push('월주');
+    if (hourPillar && voids.indexOf(hourPillar.branch) !== -1) voidPillars.push('시주');
+
     return {
       year: yearPillar, month: monthPillar, day: dayP, hour: hourPillar,
       luck, sinsal, spouse, gender: gender || 'X',
+      lifeStages, voids, voidPillars,
       solarShiftMin: shift, boundaryUncertain,
       dayMaster: dayP.stem,
       dayMasterName: STEMS[dayP.stem],
@@ -423,6 +437,31 @@
     };
   }
 
+  /* ---------- 12운성(十二運星) ----------
+   * 일간이 각 지지에서 어느 생애 단계에 있는지를 봅니다.
+   * 일간마다 장생(첫 단계)이 시작되는 지지가 정해져 있고,
+   * 양간(갑병무경임)은 순행, 음간(을정기신계)은 역행합니다. */
+  const LIFE_STAGES = ['장생', '목욕', '관대', '건록', '제왕', '쇠', '병', '사', '묘', '절', '태', '양'];
+  const LIFE_START = [11, 6, 2, 9, 2, 9, 5, 0, 8, 3]; // 일간 index → 장생 지지
+
+  function lifeStageIndex(dayStem, branch) {
+    const dir = dayStem % 2 === 0 ? 1 : -1;
+    const diff = (branch - LIFE_START[dayStem]) * dir;
+    return ((diff % 12) + 12) % 12;
+  }
+  function lifeStage(dayStem, branch) {
+    return LIFE_STAGES[lifeStageIndex(dayStem, branch)];
+  }
+
+  /* ---------- 공망(空亡) ----------
+   * 60갑자를 10개씩 여섯 순(旬)으로 나누면 짝을 못 찾은 지지 두 개가 남습니다.
+   * 보통 일주를 기준으로 봅니다. */
+  function voidBranches(ganzhiIndex) {
+    const i = ((ganzhiIndex % 60) + 60) % 60;
+    const startBranch = (i - (i % 10)) % 12;
+    return [(startBranch + 10) % 12, (startBranch + 11) % 12];
+  }
+
   /* ---------- 지지 관계 ---------- */
   function branchRelation(a, b) {
     if (a === b) return '동일';
@@ -466,6 +505,7 @@
     jdn, jdFull, jdToDate, termDay, termMoment, termJD, solarLongitude, deltaTSec,
     koreaOffsetMin, solarShiftMin, TERM_NAME, ganzhiOf, ganzhiIndexOf, dayGanzhiIndex,
     prevTermDate, nextTermDate, computeLuckCycles, computeSinsal, spouseAnalysis,
+    LIFE_STAGES, LIFE_START, lifeStage, lifeStageIndex, voidBranches,
     computeSaju, tenGod, branchRelation, hashStr, seededRng, todayGanzhi,
   };
 

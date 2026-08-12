@@ -209,6 +209,49 @@ eq(mSaju.spouse.starName, '재성(財星)', '남자 → 재성이 배우자성')
 eq(fSaju.spouse.starName, '관성(官星)', '여자 → 관성이 배우자성');
 eq(typeof mSaju.spouse.count === 'number' && mSaju.spouse.count >= 0, true, '배우자성 개수 산출');
 
+console.log('[12운성 검증]');
+// 양간은 장생 지지에서 순행, 음간은 역행
+[[0, 11, '장생'], [0, 0, '목욕'], [0, 2, '건록'], [0, 3, '제왕'],
+ [1, 6, '장생'], [1, 5, '목욕'],                       // 을(음간) 역행
+ [2, 2, '장생'], [4, 2, '장생'],
+ [7, 0, '장생'], [7, 11, '목욕'],                      // 신(음간) 역행
+ [8, 8, '장생'], [9, 3, '장생']].forEach(([ds, b, exp]) => {
+  eq(Saju.lifeStage(ds, b), exp, `${Saju.STEMS[ds]}일간 ${Saju.BRANCHES[b]} → ${exp}`);
+});
+// 12지지를 돌면 12단계가 한 번씩만 나와야 함
+let stageOK = true;
+for (let ds = 0; ds < 10; ds++) {
+  const seen = {};
+  for (let b = 0; b < 12; b++) seen[Saju.lifeStage(ds, b)] = (seen[Saju.lifeStage(ds, b)] || 0) + 1;
+  if (Object.keys(seen).length !== 12) stageOK = false;
+}
+eq(stageOK, true, '일간마다 12단계가 빠짐없이 한 번씩 배정');
+
+console.log('[공망 검증]');
+[[0, '술해'], [10, '신유'], [20, '오미'], [30, '진사'], [40, '인묘'], [50, '자축'], [59, '자축']].forEach(([i, exp]) => {
+  eq(Saju.voidBranches(i).map(b => Saju.BRANCHES[b]).join(''), exp, `${Saju.ganzhiOf(i).name}일 공망 = ${exp}`);
+});
+// 공망 지지는 그 순(旬) 안의 어떤 간지에도 나타나지 않아야 함
+let voidOK = true;
+for (let x = 0; x < 60; x += 10) {
+  const v = Saju.voidBranches(x);
+  for (let k = x; k < x + 10; k++) if (v.indexOf(Saju.ganzhiOf(k).branch) !== -1) voidOK = false;
+}
+eq(voidOK, true, '공망 지지는 해당 순에 등장하지 않음');
+// computeSaju 통합
+const lsS = Saju.computeSaju({ year: 1995, month: 3, day: 21, hour: 9, minute: 0, hourUnknown: false, solarCorrection: true, gender: 'F' });
+eq(Object.keys(lsS.lifeStages).length, 4, '네 기둥의 12운성 산출');
+eq(lsS.voids.length, 2, '공망 지지 두 개 산출');
+eq(Array.isArray(lsS.voidPillars), true, '공망에 걸린 기둥 목록 반환');
+eq(lsS.voidPillars.indexOf('일주') === -1, true, '일주는 자기 자신이라 공망 대상에서 제외');
+// 시간 모르면 시주 12운성은 없음
+const noHour = Saju.computeSaju({ year: 1995, month: 3, day: 21, hourUnknown: true, gender: 'F' });
+eq(noHour.lifeStages.hour, null, '시간 모르면 시주 12운성 없음');
+// 모든 단계에 해설이 있어야 함
+let lsDescOK = true;
+Saju.LIFE_STAGES.forEach(n => { if (!SajuData.LIFE_STAGE_DESC[n]) lsDescOK = false; });
+eq(lsDescOK, true, '12운성 12단계 해설 모두 존재');
+
 console.log('[신살 검증]');
 eq(Array.isArray(mSaju.sinsal), true, '신살 배열 반환');
 let sinsalOk = true;

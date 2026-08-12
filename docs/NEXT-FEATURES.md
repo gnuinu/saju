@@ -5,7 +5,12 @@
 
 ---
 
-# 1. 12운성 · 공망
+# 1. 12운성 · 공망 ✅ 구현 완료
+
+> 이 절은 **구현이 끝났습니다.** 아래 내용은 알고리즘 참고용으로 남겨 둡니다.
+> 코드: `js/saju.js`의 `lifeStage()` / `voidBranches()`,
+> 콘텐츠: `js/data.js`의 `LIFE_STAGE_DESC` / `VOID_DESC`,
+> 화면: `js/app.js`의 `renderLifeStageCard()` / `renderVoidCard()`
 
 사주 앱의 "전문성 증명" 요소입니다. 계산이 단순해 비용이 거의 들지 않는 반면,
 화면에 있으면 "제대로 만든 앱"이라는 인상을 크게 높입니다.

@@ -474,6 +474,8 @@
       </div>
 
       ${renderLuckCard()}
+      ${renderLifeStageCard()}
+      ${renderVoidCard()}
       ${renderSinsalCard()}
 
       <div id="deep-section"></div>
@@ -536,6 +538,61 @@
           </div>`;
         }).join('')}
         <p class="muted" style="margin-top:10px;">💡 대운은 10년마다 인생의 배경 음악이 바뀌는 것과 같아요. 지금 대운의 십신이 요즘 나에게 강하게 작동하는 에너지입니다.</p>
+      </div>`;
+  }
+
+  /* ---------- 12운성 ---------- */
+  function renderLifeStageCard() {
+    const L = saju.lifeStages;
+    const D = SajuData.LIFE_STAGE_DESC;
+    const cols = [
+      { label: '시주', stage: L.hour },
+      { label: '일주', stage: L.day },
+      { label: '월주', stage: L.month },
+      { label: '년주', stage: L.year },
+    ];
+    const mine = D[L.day];
+    const strong = ['건록', '제왕', '관대', '장생'];
+    const monthStrong = strong.indexOf(L.month) !== -1;
+
+    return `
+      <div class="card">
+        <div class="card-title">🌱 ${term('12운성')} — 기둥마다 달라지는 나의 기세</div>
+        <div class="pillars">
+          ${cols.map(c => c.stage ? `
+            <div class="pillar ${c.label === '일주' ? 'pillar-hl' : ''}">
+              <div class="p-label">${c.label}</div>
+              <div class="stage-emoji">${D[c.stage].emoji}</div>
+              <div class="stage-name">${c.stage}</div>
+              <div class="p-han">${D[c.stage].hanja}</div>
+            </div>` : `
+            <div class="pillar">
+              <div class="p-label">${c.label}</div>
+              <div class="stage-emoji" style="opacity:.3">❔</div>
+              <div class="p-han muted">시간 모름</div>
+            </div>`).join('')}
+        </div>
+        <div class="divider"></div>
+        <p class="fortune-text"><b>나 자신(일주)은 ${term(L.day, L.day + '(' + mine.hanja + ')')}</b> — ${mine.short}. ${mine.desc}</p>
+        <p class="muted" style="margin-top:8px;">💡 ${monthStrong
+          ? `월주가 <b>${L.month}</b>이라 사회 활동에서 기운이 강하게 드러납니다. 밖에서 인정받는 힘이 있어요.`
+          : `월주가 <b>${L.month}</b>이라 밖으로 뻗기보다 안을 다지는 흐름입니다. 조급해하지 않아도 됩니다.`}</p>
+      </div>`;
+  }
+
+  /* ---------- 공망 ---------- */
+  function renderVoidCard() {
+    const V = SajuData.VOID_DESC;
+    const names = saju.voids.map(b => `${Saju.BRANCHES[b]}(${Saju.BRANCH_HANJA[b]})`).join(' · ');
+    const hit = saju.voidPillars;
+    return `
+      <div class="card">
+        <div class="card-title">🕳️ ${term('공망')}<span class="spacer"></span><span class="muted">${names}</span></div>
+        <p class="muted" style="margin-bottom:10px;">${V.intro}</p>
+        ${hit.length
+          ? hit.map(p => `<div class="rel-comment" style="margin-bottom:8px;">✨ ${V.byPillar[p]}</div>`).join('')
+          : `<p class="fortune-text">${V.none}</p>`}
+        <div class="tarot-advice" style="margin-top:10px;">💡 ${V.tip}</div>
       </div>`;
   }
 
